@@ -1,4 +1,5 @@
 *.iml
+*.cmd
 *.jar
 *.class
 *.css
