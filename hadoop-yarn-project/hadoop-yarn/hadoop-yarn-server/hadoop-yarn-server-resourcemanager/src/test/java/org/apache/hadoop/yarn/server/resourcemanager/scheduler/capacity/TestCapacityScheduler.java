@@ -710,7 +710,7 @@ public class TestCapacityScheduler {
     
     // Check container can complete successfully in case of resource over-commitment.
     ContainerStatus containerStatus = BuilderUtils.newContainerStatus(
-        c1.getId(), ContainerState.COMPLETE, "", 0, 96.6);
+        c1.getId(), ContainerState.COMPLETE, "", 0);
     nm1.containerStatus(containerStatus);
     int waitCount = 0;
     while (attempt1.getJustFinishedContainers().size() < 1

@@ -40,6 +40,7 @@ import org.apache.hadoop.yarn.server.api.protocolrecords.NMContainerStatus;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerState;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 
 public class MockContainer implements Container {
@@ -109,7 +110,6 @@ public class MockContainer implements Container {
         .setState(org.apache.hadoop.yarn.api.records.ContainerState.RUNNING);
     containerStatus.setDiagnostics("testing");
     containerStatus.setExitStatus(0);
-    containerStatus.setCurrentMemoryUsage(96.6);
     return containerStatus;
   }
 

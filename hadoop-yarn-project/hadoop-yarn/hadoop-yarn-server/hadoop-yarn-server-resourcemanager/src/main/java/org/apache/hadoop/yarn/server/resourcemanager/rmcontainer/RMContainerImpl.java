@@ -412,7 +412,7 @@ public class RMContainerImpl implements RMContainer {
         ContainerStatus status =
             ContainerStatus.newInstance(report.getContainerId(),
               report.getContainerState(), report.getDiagnostics(),
-              report.getContainerExitStatus(), 96.6);
+              report.getContainerExitStatus(), -1);
 
         new FinishedTransition().transition(container,
           new RMContainerFinishedEvent(container.containerId, status,

@@ -782,7 +782,7 @@ public class TestRMAppAttemptTransitions {
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
         attemptId, 
         ContainerStatus.newInstance(
-            amContainer.getId(), ContainerState.COMPLETE, "", 0, 96.6), anyNodeId));
+            amContainer.getId(), ContainerState.COMPLETE, "", 0, -1), anyNodeId));
 
     when(scheduler.getSchedulerAppInfo(eq(attemptId))).thenReturn(null);
 
@@ -931,7 +931,7 @@ public class TestRMAppAttemptTransitions {
     int exitCode = 123;
     ContainerStatus cs =
         BuilderUtils.newContainerStatus(amContainer.getId(),
-          ContainerState.COMPLETE, containerDiagMsg, exitCode, 96.6);
+          ContainerState.COMPLETE, containerDiagMsg, exitCode);
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
       applicationAttempt.getAppAttemptId(), cs, anyNodeId));
@@ -955,7 +955,7 @@ public class TestRMAppAttemptTransitions {
     String containerDiagMsg = "some error";
     int exitCode = 123;
     ContainerStatus cs = BuilderUtils.newContainerStatus(amContainer.getId(),
-        ContainerState.COMPLETE, containerDiagMsg, exitCode, 96.6);
+        ContainerState.COMPLETE, containerDiagMsg, exitCode);
     ApplicationAttemptId appAttemptId = applicationAttempt.getAppAttemptId();
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
@@ -967,7 +967,7 @@ public class TestRMAppAttemptTransitions {
       applicationAttempt.getAppAttemptState());
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
       applicationAttempt.getAppAttemptId(), BuilderUtils.newContainerStatus(
-        amContainer.getId(), ContainerState.COMPLETE, "", 0, 96.6), anyNodeId));
+        amContainer.getId(), ContainerState.COMPLETE, "", 0), anyNodeId));
     applicationAttempt.handle(new RMAppAttemptEvent(
       applicationAttempt.getAppAttemptId(), RMAppAttemptEventType.EXPIRE));
     assertEquals(RMAppAttemptState.FINAL_SAVING,
@@ -1005,7 +1005,7 @@ public class TestRMAppAttemptTransitions {
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
       applicationAttempt.getAppAttemptId(), BuilderUtils.newContainerStatus(
-        amContainer.getId(), ContainerState.COMPLETE, "", 0, 96.6), anyNodeId));
+        amContainer.getId(), ContainerState.COMPLETE, "", 0), anyNodeId));
     applicationAttempt.handle(new RMAppAttemptEvent(
       applicationAttempt.getAppAttemptId(), RMAppAttemptEventType.EXPIRE));
     assertEquals(RMAppAttemptState.FINAL_SAVING,
@@ -1182,7 +1182,7 @@ public class TestRMAppAttemptTransitions {
             BuilderUtils.newContainerStatus(
                 BuilderUtils.newContainerId(
                     applicationAttempt.getAppAttemptId(), 42),
-                ContainerState.COMPLETE, "", 0, 96.6), anyNodeId));
+                ContainerState.COMPLETE, "", 0), anyNodeId));
     testAppAttemptFinishingState(amContainer, finalStatus, trackingUrl,
         diagnostics);
   }
@@ -1202,7 +1202,7 @@ public class TestRMAppAttemptTransitions {
         new RMAppAttemptContainerFinishedEvent(
             applicationAttempt.getAppAttemptId(),
             BuilderUtils.newContainerStatus(amContainer.getId(),
-                ContainerState.COMPLETE, "", 0, 96.6), anyNodeId));
+                ContainerState.COMPLETE, "", 0), anyNodeId));
     testAppAttemptFinishedState(amContainer, finalStatus, trackingUrl,
         diagnostics, 0, false);
   }
@@ -1231,7 +1231,7 @@ public class TestRMAppAttemptTransitions {
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
       applicationAttempt.getAppAttemptId(), BuilderUtils.newContainerStatus(
-        amContainer.getId(), ContainerState.COMPLETE, "", 0, 96.6), anyNodeId));
+        amContainer.getId(), ContainerState.COMPLETE, "", 0), anyNodeId));
     assertEquals(RMAppAttemptState.FINAL_SAVING,
       applicationAttempt.getAppAttemptState());
     // send attempt_saved
@@ -1378,7 +1378,7 @@ public class TestRMAppAttemptTransitions {
     runApplicationAttempt(amContainer, "host", 8042, "oldtrackingurl", false);
     ContainerStatus cs1 =
         ContainerStatus.newInstance(amContainer.getId(),
-          ContainerState.COMPLETE, "some error", 123,96.6);
+          ContainerState.COMPLETE, "some error", 123, -1);
     ApplicationAttemptId appAttemptId = applicationAttempt.getAppAttemptId();
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
@@ -1396,7 +1396,7 @@ public class TestRMAppAttemptTransitions {
     assertEquals(0, applicationAttempt.getJustFinishedContainers().size());
     ContainerStatus cs2 =
         ContainerStatus.newInstance(ContainerId.newContainerId(appAttemptId, 2),
-          ContainerState.COMPLETE, "", 0,96.6);
+          ContainerState.COMPLETE, "", 0, -1);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
       appAttemptId, cs2, anyNodeId));
     assertEquals(1, applicationAttempt.getJustFinishedContainers().size());
@@ -1429,7 +1429,7 @@ public class TestRMAppAttemptTransitions {
     runApplicationAttempt(amContainer, "host", 8042, "oldtrackingurl", false);
     ContainerStatus cs1 =
         ContainerStatus.newInstance(amContainer.getId(),
-          ContainerState.COMPLETE, "some error", 123,96.6);
+          ContainerState.COMPLETE, "some error", 123, -1);
     ApplicationAttemptId appAttemptId = applicationAttempt.getAppAttemptId();
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(

@@ -1505,7 +1505,7 @@ public class TestNodeStatusUpdater {
     ContainerStatus containerStatus =
         BuilderUtils.newContainerStatus(contaierId, containerState,
           "test_containerStatus: id=" + id + ", containerState: "
-              + containerState, 0, 96.6);
+              + containerState, 0);
     return containerStatus;
   }
 

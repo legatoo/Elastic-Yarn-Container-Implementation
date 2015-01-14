@@ -78,6 +78,7 @@ public class ContainersMonitorImpl extends AbstractService implements
       AsyncDispatcher dispatcher, Context context) {
     super("containers-monitor");
 
+    LOG.debug("Container Monitor is constructed.");
     this.containerExecutor = exec;
     this.eventDispatcher = dispatcher;
     this.context = context;
@@ -181,6 +182,50 @@ public class ContainersMonitorImpl extends AbstractService implements
     }
 
     return true;
+  }
+
+  @Override
+  public double getContainerCurrentMemUsage(ContainerId id){
+      ProcessTreeInfo ptInfo = trackingContainers.get(id);
+      try{
+          String pId = ptInfo.getPID();
+
+          // Initialize any uninitialized processTrees
+          if (pId == null) {
+              // get pid from ContainerId
+              pId = containerExecutor.getProcessId(ptInfo.getContainerId());
+              if (pId != null) {
+                  // pId will be null, either if the container is not spawned yet
+                  // or if the container's pid is removed from ContainerExecutor
+                  LOG.debug("Tracking ProcessTree " + pId
+                          + " for the first time");
+
+                  ResourceCalculatorProcessTree pt =
+                          ResourceCalculatorProcessTree.getResourceCalculatorProcessTree(pId, processTreeClass, conf);
+                  ptInfo.setPid(pId);
+                  ptInfo.setProcessTree(pt);
+              }
+          }
+          // End of initializing any uninitialized processTrees
+
+          if (pId == null) {
+              return -1;
+          }
+
+          LOG.debug("calculate current container memory usage.");
+          ResourceCalculatorProcessTree pTree = ptInfo.getProcessTree();
+          pTree.updateProcessTree();    // update process-tree
+          long curMemUsageOfAgedProcesses = pTree.getCumulativeVmem(1);
+          long vmemLimit = ptInfo.getVmemLimit();
+          return (double)(curMemUsageOfAgedProcesses/vmemLimit);
+
+      }
+      catch (Exception e) {
+          // Log the exception and proceed to the next container.
+          LOG.warn("Uncaught exception in ContainerMemoryManager "
+                  + "while managing memory of " + id, e);
+          return -1;
+      }
   }
 
   @Override

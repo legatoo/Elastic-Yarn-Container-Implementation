@@ -50,7 +50,6 @@ public abstract class ContainerStatus {
     containerStatus.setContainerId(containerId);
     containerStatus.setDiagnostics(diagnostics);
     containerStatus.setExitStatus(exitStatus);
-    containerStatus.setCurrentMemoryUsage(currentMemoryUsage);
     return containerStatus;
   }
 
@@ -117,11 +116,4 @@ public abstract class ContainerStatus {
   @Unstable
   public abstract void setDiagnostics(String diagnostics);
 
-  @Private
-  @Unstable
-  public abstract void setCurrentMemoryUsage(double currentMemoryUsage);
-
-  @Private
-  @Stable
-  public abstract  double getCurrentMemoryUsage();
 }

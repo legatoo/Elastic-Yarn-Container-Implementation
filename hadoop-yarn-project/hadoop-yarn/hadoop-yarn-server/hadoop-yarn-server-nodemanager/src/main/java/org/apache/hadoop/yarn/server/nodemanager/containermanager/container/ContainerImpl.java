@@ -62,6 +62,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.even
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.event.LogHandlerContainerFinishedEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerStartMonitoringEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerStopMonitoringEvent;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
 import org.apache.hadoop.yarn.server.nodemanager.metrics.NodeManagerMetrics;
 import org.apache.hadoop.yarn.server.nodemanager.recovery.NMStateStoreService;
 import org.apache.hadoop.yarn.server.nodemanager.recovery.NMStateStoreService.RecoveredContainerStatus;
@@ -90,6 +91,8 @@ public class ContainerImpl implements Container {
   private final StringBuilder diagnostics;
   private boolean wasLaunched;
 
+  private ContainersMonitor monitor;
+
   /** The NM-wide configuration - not specific to this container */
   private final Configuration daemonConf;
 
@@ -115,6 +118,7 @@ public class ContainerImpl implements Container {
       NMStateStoreService stateStore, ContainerLaunchContext launchContext,
       Credentials creds, NodeManagerMetrics metrics,
       ContainerTokenIdentifier containerTokenIdentifier) {
+    LOG.debug("ContainerImpl is constructed.");
     this.daemonConf = conf;
     this.dispatcher = dispatcher;
     this.stateStore = stateStore;
@@ -146,6 +150,8 @@ public class ContainerImpl implements Container {
     this.exitCode = exitCode;
     this.recoveredAsKilled = wasKilled;
     this.diagnostics.append(diagnostics);
+    LOG.debug("ContainerImpl is constructed.");
+
   }
 
   private static final ContainerDoneTransition CONTAINER_DONE_TRANSITION =
@@ -412,8 +418,13 @@ public class ContainerImpl implements Container {
   public ContainerStatus cloneAndGetContainerStatus() {
     this.readLock.lock();
     try {
+      //need get current memory usage here.
+      LOG.debug("clone container status");
+//      return BuilderUtils.newContainerStatus(this.containerId,
+//        getCurrentState(), diagnostics.toString(), exitCode,
+//              monitor.getContainerCurrentMemUsage(this.containerId));
       return BuilderUtils.newContainerStatus(this.containerId,
-        getCurrentState(), diagnostics.toString(), exitCode, 96.6);
+                getCurrentState(), diagnostics.toString(), exitCode);
     } finally {
       this.readLock.unlock();
     }

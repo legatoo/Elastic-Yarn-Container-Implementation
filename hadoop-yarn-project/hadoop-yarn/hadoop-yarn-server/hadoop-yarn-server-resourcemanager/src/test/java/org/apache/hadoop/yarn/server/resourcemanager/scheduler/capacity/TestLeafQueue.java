@@ -520,7 +520,7 @@ public class TestLeafQueue {
       a.completedContainer(clusterResource, app_0, node_0, rmContainer,
           ContainerStatus.newInstance(rmContainer.getContainerId(),
               ContainerState.COMPLETE, "",
-              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
           RMContainerEventType.KILL, null, true);
     }
     assertEquals(1*GB, a.getUsedResources().getMemory());
@@ -534,7 +534,7 @@ public class TestLeafQueue {
       a.completedContainer(clusterResource, app_1, node_0, rmContainer,
           ContainerStatus.newInstance(rmContainer.getContainerId(),
               ContainerState.COMPLETE, "",
-              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER,96.6),
+              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
           RMContainerEventType.KILL, null, true);
     }
 
@@ -868,7 +868,7 @@ public class TestLeafQueue {
     a.completedContainer(clusterResource, app_0, node_0, rmContainer,
     ContainerStatus.newInstance(rmContainer.getContainerId(),
 	ContainerState.COMPLETE, "",
-	ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+	ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
     RMContainerEventType.KILL, null, true);
 
     assertEquals(2*GB, app_0.getHeadroom().getMemory());
@@ -1134,7 +1134,7 @@ public class TestLeafQueue {
       a.completedContainer(clusterResource, app_0, node_0, rmContainer,
           ContainerStatus.newInstance(rmContainer.getContainerId(),
               ContainerState.COMPLETE, "",
-              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
           RMContainerEventType.KILL, null, true);
     }
     assertEquals(5*GB, a.getUsedResources().getMemory());
@@ -1148,7 +1148,7 @@ public class TestLeafQueue {
       a.completedContainer(clusterResource, app_2, node_0, rmContainer,
           ContainerStatus.newInstance(rmContainer.getContainerId(),
               ContainerState.COMPLETE, "",
-              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
           RMContainerEventType.KILL, null, true);
     }
     assertEquals(2*GB, a.getUsedResources().getMemory());
@@ -1162,7 +1162,7 @@ public class TestLeafQueue {
       a.completedContainer(clusterResource, app_3, node_0, rmContainer,
           ContainerStatus.newInstance(rmContainer.getContainerId(),
               ContainerState.COMPLETE, "",
-              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+              ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
           RMContainerEventType.KILL, null, true);
     }
     assertEquals(0*GB, a.getUsedResources().getMemory());
@@ -1253,7 +1253,7 @@ public class TestLeafQueue {
     a.completedContainer(clusterResource, app_0, node_0, rmContainer,
         ContainerStatus.newInstance(rmContainer.getContainerId(),
             ContainerState.COMPLETE, "",
-            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
         RMContainerEventType.KILL, null, true);
     a.assignContainers(clusterResource, node_0, false);
     assertEquals(5*GB, a.getUsedResources().getMemory()); 
@@ -1269,7 +1269,7 @@ public class TestLeafQueue {
     a.completedContainer(clusterResource, app_0, node_0, rmContainer,
         ContainerStatus.newInstance(rmContainer.getContainerId(),
             ContainerState.COMPLETE, "",
-            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
         RMContainerEventType.KILL, null, true);
     a.assignContainers(clusterResource, node_0, false);
     assertEquals(4*GB, a.getUsedResources().getMemory());
@@ -1374,7 +1374,7 @@ public class TestLeafQueue {
     a.completedContainer(clusterResource, app_0, node_0, rmContainer,
         ContainerStatus.newInstance(rmContainer.getContainerId(),
             ContainerState.COMPLETE, "",
-            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
         RMContainerEventType.KILL, null, true);
     a.assignContainers(clusterResource, node_0, false);
     assertEquals(8*GB, a.getUsedResources().getMemory());
@@ -1469,7 +1469,7 @@ public class TestLeafQueue {
     a.completedContainer(clusterResource, app_0, node_0, rmContainer,
         ContainerStatus.newInstance(rmContainer.getContainerId(),
             ContainerState.COMPLETE, "",
-            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
         RMContainerEventType.KILL, null, true);
     a.assignContainers(clusterResource, node_0, false);
     assertEquals(5*GB, a.getUsedResources().getMemory()); 
@@ -1504,7 +1504,7 @@ public class TestLeafQueue {
     a.completedContainer(clusterResource, app_0, node_0, rmContainer,
         ContainerStatus.newInstance(rmContainer.getContainerId(),
             ContainerState.COMPLETE, "",
-            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, 96.6),
+            ContainerExitStatus.KILLED_BY_RESOURCEMANAGER, -1),
         RMContainerEventType.KILL, null, true);
     CSAssignment assignment = a.assignContainers(clusterResource, node_0, false);
     assertEquals(8*GB, a.getUsedResources().getMemory());

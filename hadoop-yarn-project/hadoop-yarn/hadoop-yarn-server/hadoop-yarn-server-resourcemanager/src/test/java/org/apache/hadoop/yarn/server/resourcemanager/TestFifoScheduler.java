@@ -203,7 +203,7 @@ public class TestFifoScheduler {
     Container c1 = allocated1.get(0);
     Assert.assertEquals(GB, c1.getResource().getMemory());
     ContainerStatus containerStatus = BuilderUtils.newContainerStatus(
-        c1.getId(), ContainerState.COMPLETE, "", 0, 96.6);
+        c1.getId(), ContainerState.COMPLETE, "", 0);
     nm1.containerStatus(containerStatus);
     int waitCount = 0;
     while (attempt1.getJustFinishedContainers().size() < 1
@@ -577,7 +577,7 @@ public class TestFifoScheduler {
     
     // Check container can complete successfully in case of resource over-commitment.
     ContainerStatus containerStatus = BuilderUtils.newContainerStatus(
-        c1.getId(), ContainerState.COMPLETE, "", 0, 96.6);
+        c1.getId(), ContainerState.COMPLETE, "", 0);
     nm1.containerStatus(containerStatus);
     int waitCount = 0;
     while (attempt1.getJustFinishedContainers().size() < 1

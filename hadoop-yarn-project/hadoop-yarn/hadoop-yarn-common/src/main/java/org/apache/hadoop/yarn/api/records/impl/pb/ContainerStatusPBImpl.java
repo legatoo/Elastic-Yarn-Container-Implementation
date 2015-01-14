@@ -80,7 +80,6 @@ public class ContainerStatusPBImpl extends ContainerStatus {
     sb.append("State: ").append(getState()).append(", ");
     sb.append("Diagnostics: ").append(getDiagnostics()).append(", ");
     sb.append("ExitStatus: ").append(getExitStatus()).append(", ");
-    sb.append("Current Memory Usage: ").append(getCurrentMemoryUsage()).append(", ");
     sb.append("]");
     return sb.toString();
   }
@@ -149,18 +148,6 @@ public class ContainerStatusPBImpl extends ContainerStatus {
   public synchronized int getExitStatus() {
     ContainerStatusProtoOrBuilder p = viaProto ? proto : builder;
     return p.getExitStatus();
-  }
-
-  @Override
-  public synchronized void setCurrentMemoryUsage(double currentMemoryUsage){
-    maybeInitBuilder();
-    builder.setCurrentMemoryUsage(currentMemoryUsage);
-  }
-
-  @Override
-  public synchronized double getCurrentMemoryUsage(){
-    ContainerStatusProtoOrBuilder p = viaProto ? proto : builder;
-    return (p.getCurrentMemoryUsage());
   }
 
   @Override
