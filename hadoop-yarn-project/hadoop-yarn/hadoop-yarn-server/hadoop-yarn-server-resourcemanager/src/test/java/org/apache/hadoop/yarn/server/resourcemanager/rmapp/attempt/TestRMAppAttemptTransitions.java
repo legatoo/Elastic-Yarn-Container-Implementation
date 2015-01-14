@@ -782,7 +782,7 @@ public class TestRMAppAttemptTransitions {
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
         attemptId, 
         ContainerStatus.newInstance(
-            amContainer.getId(), ContainerState.COMPLETE, "", 0, -1), anyNodeId));
+            amContainer.getId(), ContainerState.COMPLETE, "", 0), anyNodeId));
 
     when(scheduler.getSchedulerAppInfo(eq(attemptId))).thenReturn(null);
 
@@ -1378,7 +1378,7 @@ public class TestRMAppAttemptTransitions {
     runApplicationAttempt(amContainer, "host", 8042, "oldtrackingurl", false);
     ContainerStatus cs1 =
         ContainerStatus.newInstance(amContainer.getId(),
-          ContainerState.COMPLETE, "some error", 123, -1);
+          ContainerState.COMPLETE, "some error", 123);
     ApplicationAttemptId appAttemptId = applicationAttempt.getAppAttemptId();
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
@@ -1396,7 +1396,7 @@ public class TestRMAppAttemptTransitions {
     assertEquals(0, applicationAttempt.getJustFinishedContainers().size());
     ContainerStatus cs2 =
         ContainerStatus.newInstance(ContainerId.newContainerId(appAttemptId, 2),
-          ContainerState.COMPLETE, "", 0, -1);
+          ContainerState.COMPLETE, "", 0);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(
       appAttemptId, cs2, anyNodeId));
     assertEquals(1, applicationAttempt.getJustFinishedContainers().size());
@@ -1429,7 +1429,7 @@ public class TestRMAppAttemptTransitions {
     runApplicationAttempt(amContainer, "host", 8042, "oldtrackingurl", false);
     ContainerStatus cs1 =
         ContainerStatus.newInstance(amContainer.getId(),
-          ContainerState.COMPLETE, "some error", 123, -1);
+          ContainerState.COMPLETE, "some error", 123);
     ApplicationAttemptId appAttemptId = applicationAttempt.getAppAttemptId();
     NodeId anyNodeId = NodeId.newInstance("host", 1234);
     applicationAttempt.handle(new RMAppAttemptContainerFinishedEvent(

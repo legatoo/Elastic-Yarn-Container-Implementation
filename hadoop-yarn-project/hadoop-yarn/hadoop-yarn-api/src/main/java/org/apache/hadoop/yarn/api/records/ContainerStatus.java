@@ -44,7 +44,7 @@ public abstract class ContainerStatus {
   @Private
   @Unstable
   public static ContainerStatus newInstance(ContainerId containerId,
-      ContainerState containerState, String diagnostics, int exitStatus, double currentMemoryUsage) {
+      ContainerState containerState, String diagnostics, int exitStatus) {
     ContainerStatus containerStatus = Records.newRecord(ContainerStatus.class);
     containerStatus.setState(containerState);
     containerStatus.setContainerId(containerId);

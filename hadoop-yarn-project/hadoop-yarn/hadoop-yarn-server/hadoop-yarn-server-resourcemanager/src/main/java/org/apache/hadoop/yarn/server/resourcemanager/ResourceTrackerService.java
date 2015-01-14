@@ -231,7 +231,7 @@ public class ResourceTrackerService extends AbstractService implements
       ContainerStatus status =
           ContainerStatus.newInstance(containerStatus.getContainerId(),
             containerStatus.getContainerState(), containerStatus.getDiagnostics(),
-            containerStatus.getContainerExitStatus(), -1);
+            containerStatus.getContainerExitStatus());
       // sending master container finished event.
       RMAppAttemptContainerFinishedEvent evt =
           new RMAppAttemptContainerFinishedEvent(appAttemptId, status,

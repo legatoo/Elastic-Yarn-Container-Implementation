@@ -73,7 +73,7 @@ public class TestAMRMClientAsync {
     final AtomicBoolean heartbeatBlock = new AtomicBoolean(true);
     List<ContainerStatus> completed1 = Arrays.asList(
         ContainerStatus.newInstance(newContainerId(0, 0, 0, 0),
-            ContainerState.COMPLETE, "", 0, -1));
+            ContainerState.COMPLETE, "", 0));
     List<Container> allocated1 = Arrays.asList(
         Container.newInstance(null, null, null, null, null, null));
     final AllocateResponse response1 = createAllocateResponse(
@@ -271,7 +271,7 @@ public class TestAMRMClientAsync {
 
     List<ContainerStatus> completed = Arrays.asList(
         ContainerStatus.newInstance(newContainerId(0, 0, 0, 0),
-            ContainerState.COMPLETE, "", 0, -1));
+            ContainerState.COMPLETE, "", 0));
     final AllocateResponse response = createAllocateResponse(completed,
         new ArrayList<Container>(), null);
 
@@ -305,7 +305,7 @@ public class TestAMRMClientAsync {
 
     List<ContainerStatus> completed = Arrays.asList(
         ContainerStatus.newInstance(newContainerId(0, 0, 0, 0),
-            ContainerState.COMPLETE, "", 0, -1));
+            ContainerState.COMPLETE, "", 0));
     final AllocateResponse response = createAllocateResponse(completed,
         new ArrayList<Container>(), null);
 
@@ -337,7 +337,7 @@ public class TestAMRMClientAsync {
 
     List<ContainerStatus> completed = Arrays.asList(
         ContainerStatus.newInstance(newContainerId(0, 0, 0, 0),
-            ContainerState.COMPLETE, "", 0, -1));
+            ContainerState.COMPLETE, "", 0));
     final AllocateResponse response = createAllocateResponse(completed,
         new ArrayList<Container>(), null);
 
