@@ -405,10 +405,10 @@ message ContainerStatusProto {
   optional int32 exit_status = 4 [default = -1000];
 }
 
-message ContainerMemoryStatusesProto{
+message ContainerMemoryStatusProto{
   optional ContainerIdProto container_id = 1;
-  optional double virtualMemUsageRatio = 2 [default = -1];
-  optional double physicalMemUsageRatio = 3 [default = -1];
+  optional double virtual_mem_usage = 2 [default = -1.0];
+  optional double physical_mem_usage = 3 [default = -1.0];
 }
 
 enum ContainerExitStatusProto {

@@ -32,12 +32,14 @@ import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.util.StringUtils.TraditionalBinaryPrefix;
 import org.apache.hadoop.yarn.api.records.ContainerExitStatus;
 import org.apache.hadoop.yarn.api.records.ContainerId;
+import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.event.AsyncDispatcher;
 import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.server.nodemanager.ContainerExecutor;
 import org.apache.hadoop.yarn.server.nodemanager.Context;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerKillEvent;
+import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.yarn.util.ResourceCalculatorPlugin;
 
@@ -56,6 +58,8 @@ public class ContainersMonitorImpl extends AbstractService implements
   final Map<ContainerId, ProcessTreeInfo> containersToBeAdded;
   Map<ContainerId, ProcessTreeInfo> trackingContainers =
       new HashMap<ContainerId, ProcessTreeInfo>();
+  final Map<ContainerId, ContainerMemoryStatus> containerMemoryStatuseses =
+          new HashMap<ContainerId, ContainerMemoryStatus>();
 
   final ContainerExecutor containerExecutor;
   private final Dispatcher eventDispatcher;
@@ -184,49 +188,7 @@ public class ContainersMonitorImpl extends AbstractService implements
     return true;
   }
 
-  @Override
-  public double getContainerCurrentMemUsage(ContainerId id){
-      ProcessTreeInfo ptInfo = trackingContainers.get(id);
-      try{
-          String pId = ptInfo.getPID();
 
-          // Initialize any uninitialized processTrees
-          if (pId == null) {
-              // get pid from ContainerId
-              pId = containerExecutor.getProcessId(ptInfo.getContainerId());
-              if (pId != null) {
-                  // pId will be null, either if the container is not spawned yet
-                  // or if the container's pid is removed from ContainerExecutor
-                  LOG.debug("Tracking ProcessTree " + pId
-                          + " for the first time");
-
-                  ResourceCalculatorProcessTree pt =
-                          ResourceCalculatorProcessTree.getResourceCalculatorProcessTree(pId, processTreeClass, conf);
-                  ptInfo.setPid(pId);
-                  ptInfo.setProcessTree(pt);
-              }
-          }
-          // End of initializing any uninitialized processTrees
-
-          if (pId == null) {
-              return -1;
-          }
-
-          LOG.debug("calculate current container memory usage.");
-          ResourceCalculatorProcessTree pTree = ptInfo.getProcessTree();
-          pTree.updateProcessTree();    // update process-tree
-          long curMemUsageOfAgedProcesses = pTree.getCumulativeVmem(1);
-          long vmemLimit = ptInfo.getVmemLimit();
-          return (double)(curMemUsageOfAgedProcesses/vmemLimit);
-
-      }
-      catch (Exception e) {
-          // Log the exception and proceed to the next container.
-          LOG.warn("Uncaught exception in ContainerMemoryManager "
-                  + "while managing memory of " + id, e);
-          return -1;
-      }
-  }
 
   @Override
   protected void serviceStart() throws Exception {
@@ -501,12 +463,34 @@ public class ContainersMonitorImpl extends AbstractService implements
                       containerExitStatus, msg));
               it.remove();
               LOG.info("Removed ProcessTree with root " + pId);
+
+              synchronized (containerMemoryStatuseses){
+                 LOG.debug("Removing over limit container from status list.");
+                 containerMemoryStatuseses.remove(containerId);
+              }
             } else {
               // Accounting the total memory in usage for all containers that
               // are still
               // alive and within limits.
               vmemStillInUsage += currentVmemUsage;
               pmemStillInUsage += currentPmemUsage;
+
+              synchronized (containerMemoryStatuseses){
+                  LOG.debug("Adding status to list");
+                  LOG.debug("ContainerId: " + containerId +
+                  ", Virtual memory usage: " + curMemUsageOfAgedProcesses + " out of "+ vmemLimit +
+                  ", Physical memoty usage: " + curRssMemUsageOfAgedProcesses + "out of "+ pmemLimit);
+
+                  double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses*100)) / vmemLimit;
+                  double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses*100)) / pmemLimit;
+
+                  LOG.debug("vMemUsageRatio: " + vMemUsageRatio + ", pMemUsageRatio: " + pMemUsageRatio);
+
+                  ContainerMemoryStatus newContainerMemoryStatus =
+                          BuilderUtils.newContainerMemoryStatus(containerId, vMemUsageRatio, pMemUsageRatio);
+
+                  containerMemoryStatuseses.put(containerId, newContainerMemoryStatus);
+              }
             }
           } catch (Exception e) {
             // Log the exception and proceed to the next container.
@@ -613,5 +597,28 @@ public class ContainersMonitorImpl extends AbstractService implements
     default:
       // TODO: Wrong event.
     }
+  }
+
+  @Override
+  public synchronized List<ContainerMemoryStatus> getContainerMemoryStatuses() {
+      List<ContainerMemoryStatus> returnContainerMemStatuses = new ArrayList<ContainerMemoryStatus>();
+      synchronized (containerMemoryStatuseses){
+          LOG.debug("Return current memory status of each container.");
+
+          for (Iterator<Map.Entry<ContainerId, ContainerMemoryStatus>> it =
+                       containerMemoryStatuseses.entrySet().iterator(); it.hasNext();) {
+
+              Map.Entry<ContainerId, ContainerMemoryStatus> entry = it.next();
+              ContainerId containerId = entry.getKey();
+              ContainerMemoryStatus containerMemStatus = entry.getValue();
+
+//              LOG.debug("ContainerID " + containerId +
+//              "'s memory status: [ vMemUsageRatio: " + containerMemStatus.getVirtualMemUsage()
+//              + ", pMemUsageRatio: " + containerMemStatus.getPhysicalMemUsage() + " ]");
+
+              returnContainerMemStatuses.add(containerMemStatus);
+          }
+      }
+      return returnContainerMemStatuses;
   }
 }

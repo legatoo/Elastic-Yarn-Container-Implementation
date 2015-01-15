@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.logging.Log;
@@ -32,13 +33,7 @@ import org.apache.hadoop.net.Node;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.util.VersionUtil;
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.ContainerState;
-import org.apache.hadoop.yarn.api.records.ContainerStatus;
-import org.apache.hadoop.yarn.api.records.NodeId;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
@@ -362,6 +357,26 @@ public class ResourceTrackerService extends AbstractService implements
 
     NodeId nodeId = remoteNodeStatus.getNodeId();
 
+    // Receive container memory usage from Node Manager
+//    List<ContainerMemoryStatus> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
+//
+
+//    if( !containerMemoryStatuses.isEmpty()) {
+//        LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
+//        for (ContainerMemoryStatus status : containerMemoryStatuses) {
+//            ContainerId containerId = status.getContainerId();
+//            double vMemUsageRatio = status.getVirtualMemUsage();
+//            double pMemUsageRatio = status.getPhysicalMemUsage();
+//            LOG.debug("Container Memory Status: [ ContainerId: " + containerId.getContainerId() +
+//                    ", Virtual memory usage: " + vMemUsageRatio + ", Physical memory usage: " + pMemUsageRatio
+//                    + ", ]");
+//
+//        }
+//    }else{
+//        LOG.debug("Receive 0 container memory usage from NM");
+//    }
+
+
     // 1. Check if it's a registered node
     RMNode rmNode = this.rmContext.getRMNodes().get(nodeId);
     if (rmNode == null) {
@@ -429,7 +444,7 @@ public class ResourceTrackerService extends AbstractService implements
         new RMNodeStatusEvent(nodeId, remoteNodeStatus.getNodeHealthStatus(),
             remoteNodeStatus.getContainersStatuses(), 
             remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse));
-    LOG.debug("send node status to RMNode...");
+    LOG.debug("send heart beat response to RMNode..." + nodeHeartBeatResponse);
     return nodeHeartBeatResponse;
   }
 

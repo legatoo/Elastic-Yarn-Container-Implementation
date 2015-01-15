@@ -20,11 +20,16 @@ package org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor;
 
 import org.apache.hadoop.service.Service;
 import org.apache.hadoop.yarn.api.records.ContainerId;
+import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.server.nodemanager.ResourceView;
+
+import java.util.List;
 
 public interface ContainersMonitor extends Service,
     EventHandler<ContainersMonitorEvent>, ResourceView {
 
-    public double getContainerCurrentMemUsage(ContainerId id);
+    // add new method for ContainerMonitor interface
+    // to send container memory statuses out
+    public List<ContainerMemoryStatus> getContainerMemoryStatuses();
 }

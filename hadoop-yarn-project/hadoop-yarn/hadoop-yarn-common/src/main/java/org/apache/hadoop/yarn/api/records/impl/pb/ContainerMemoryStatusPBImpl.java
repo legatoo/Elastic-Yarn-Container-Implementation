@@ -1,13 +1,12 @@
 package org.apache.hadoop.yarn.api.records.impl.pb;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.classification.InterfaceStability.Unstable;
 import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerMemoryStatuses;
+import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerIdProto;
-import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusesProto;
-import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusesProtoOrBuilder;
+import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusProto;
+import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusProtoOrBuilder;
 
 /**
  * Created by steven on 1/14/15.
@@ -15,24 +14,24 @@ import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusesProtoOrBui
 
 @Private
 @Unstable
-public class ContainerMemoryStatusesPBImpl extends ContainerMemoryStatuses {
-    ContainerMemoryStatusesProto proto = ContainerMemoryStatusesProto.getDefaultInstance();
-    ContainerMemoryStatusesProto.Builder builder = null;
-
+public class ContainerMemoryStatusPBImpl extends ContainerMemoryStatus {
+    ContainerMemoryStatusProto proto = ContainerMemoryStatusProto.getDefaultInstance();
+    ContainerMemoryStatusProto.Builder builder = null;
     boolean viaProto = false;
+
     private ContainerId containerId = null;
 
 
-    public ContainerMemoryStatusesPBImpl() {
-        builder = ContainerMemoryStatusesProto.newBuilder();
+    public ContainerMemoryStatusPBImpl() {
+        builder = ContainerMemoryStatusProto.newBuilder();
     }
 
-    public ContainerMemoryStatusesPBImpl(ContainerMemoryStatusesProto proto) {
+    public ContainerMemoryStatusPBImpl(ContainerMemoryStatusProto proto) {
         this.proto = proto;
         viaProto = true;
     }
 
-    public synchronized ContainerMemoryStatusesProto getProto() {
+    public synchronized ContainerMemoryStatusProto getProto() {
         mergeLocalToProto();
         proto = viaProto ? proto : builder.build();
         viaProto = true;
@@ -81,7 +80,7 @@ public class ContainerMemoryStatusesPBImpl extends ContainerMemoryStatuses {
 
     private synchronized void maybeInitBuilder() {
         if (viaProto || builder == null) {
-            builder = ContainerMemoryStatusesProto.newBuilder(proto);
+            builder = ContainerMemoryStatusProto.newBuilder(proto);
         }
         viaProto = false;
     }
@@ -96,7 +95,7 @@ public class ContainerMemoryStatusesPBImpl extends ContainerMemoryStatuses {
 
     @Override
     public synchronized ContainerId getContainerId() {
-        ContainerMemoryStatusesProtoOrBuilder p = viaProto ? proto : builder;
+        ContainerMemoryStatusProtoOrBuilder p = viaProto ? proto : builder;
         if (this.containerId != null) {
             return this.containerId;
         }
@@ -110,25 +109,25 @@ public class ContainerMemoryStatusesPBImpl extends ContainerMemoryStatuses {
     @Override
     public synchronized void setVirtualMemUsage(double virtualMemUsage) {
         maybeInitBuilder();
-        builder.setVirtualMemUsageRatio(virtualMemUsage);
+        builder.setVirtualMemUsage(virtualMemUsage);
     }
 
     @Override
     public synchronized double getVirtualMemUsage() {
-        ContainerMemoryStatusesProtoOrBuilder p = viaProto ? proto : builder;
-        return (p.getVirtualMemUsageRatio());
+        ContainerMemoryStatusProtoOrBuilder p = viaProto ? proto : builder;
+        return (p.getVirtualMemUsage());
     }
 
     @Override
     public synchronized void setPhysicalMemUsage(double physicalMemUsage) {
         maybeInitBuilder();
-        builder.setPhysicalMemUsageRatio(physicalMemUsage);
+        builder.setPhysicalMemUsage(physicalMemUsage);
     }
 
     @Override
     public synchronized double getPhysicalMemUsage() {
-        ContainerMemoryStatusesProtoOrBuilder p = viaProto ? proto : builder;
-        return (p.getPhysicalMemUsageRatio());
+        ContainerMemoryStatusProtoOrBuilder p = viaProto ? proto : builder;
+        return (p.getPhysicalMemUsage());
     }
 
     private ContainerIdPBImpl convertFromProtoFormat(ContainerIdProto p) {

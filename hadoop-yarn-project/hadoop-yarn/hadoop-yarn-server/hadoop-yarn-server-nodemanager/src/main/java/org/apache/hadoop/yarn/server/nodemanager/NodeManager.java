@@ -20,6 +20,7 @@ package org.apache.hadoop.yarn.server.nodemanager;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -44,6 +45,7 @@ import org.apache.hadoop.yarn.YarnUncaughtExceptionHandler;
 import org.apache.hadoop.yarn.api.ContainerManagementProtocol;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ContainerId;
+import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
 import org.apache.hadoop.yarn.api.records.NodeId;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.event.AsyncDispatcher;
@@ -234,6 +236,7 @@ public class NodeManager extends CompositeService
         this.aclsManager, dirsHandler);
     addService(containerManager);
     ((NMContext) context).setContainerManager(containerManager);
+
 
     WebServer webServer = createWebServer(context, containerManager
         .getContainersMonitor(), this.aclsManager, dirsHandler);
@@ -431,6 +434,11 @@ public class NodeManager extends CompositeService
     @Override
     public Map<ApplicationId, Credentials> getSystemCredentialsForApps() {
       return systemCredentials;
+    }
+
+    @Override
+    public List<ContainerMemoryStatus> getCotainerMemoryStatuses() {
+      return null;
     }
 
     public void setSystemCrendentialsForApps(

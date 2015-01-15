@@ -81,7 +81,6 @@ public class ResourceTrackerPBClientImpl implements ResourceTracker, Closeable {
       throws YarnException, IOException {
     NodeHeartbeatRequestProto requestProto = ((NodeHeartbeatRequestPBImpl)request).getProto();
     try {
-      LOG.debug("heart beat in client...");
       return new NodeHeartbeatResponsePBImpl(proxy.nodeHeartbeat(null, requestProto));
     } catch (ServiceException e) {
       RPCUtil.unwrapAndThrowException(e);

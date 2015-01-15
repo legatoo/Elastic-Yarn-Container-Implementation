@@ -1149,4 +1149,5 @@ public class ContainerManagerImpl extends CompositeService implements
   public Map<String, ByteBuffer> getAuxServiceMetaData() {
     return this.auxiliaryServices.getMetaData();
   }
+
 }

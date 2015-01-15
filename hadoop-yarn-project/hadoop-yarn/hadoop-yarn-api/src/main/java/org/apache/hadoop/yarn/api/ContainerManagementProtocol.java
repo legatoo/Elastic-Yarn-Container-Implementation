@@ -170,4 +170,7 @@ public interface ContainerManagementProtocol {
   GetContainerStatusesResponse getContainerStatuses(
       GetContainerStatusesRequest request) throws YarnException,
       IOException;
+
+
+
 }

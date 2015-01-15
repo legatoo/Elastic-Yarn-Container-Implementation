@@ -69,7 +69,6 @@ public class ResourceTrackerPBServiceImpl implements ResourceTrackerPB {
       NodeHeartbeatRequestProto proto) throws ServiceException {
     NodeHeartbeatRequestPBImpl request = new NodeHeartbeatRequestPBImpl(proto);
     try {
-      LOG.debug("heart beat in service...");
       NodeHeartbeatResponse response = real.nodeHeartbeat(request);
       return ((NodeHeartbeatResponsePBImpl)response).getProto();
     } catch (YarnException e) {

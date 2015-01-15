@@ -43,12 +43,7 @@ import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.util.VersionUtil;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerState;
-import org.apache.hadoop.yarn.api.records.ContainerStatus;
-import org.apache.hadoop.yarn.api.records.NodeId;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.exceptions.YarnException;
@@ -71,6 +66,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.application.Ap
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
 import org.apache.hadoop.yarn.server.nodemanager.metrics.NodeManagerMetrics;
+import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.YarnVersionInfo;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -345,9 +341,13 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
           + ", " + nodeHealthStatus.getHealthReport());
     }
     List<ContainerStatus> containersStatuses = getContainerStatuses();
+
+    //TODO: call container monitor from context
+    List<ContainerMemoryStatus> containerMemoryStatuses = getContainerMemoryStatuses();
+
     NodeStatus nodeStatus =
         NodeStatus.newInstance(nodeId, responseId, containersStatuses,
-          createKeepAliveApplicationList(), nodeHealthStatus);
+          createKeepAliveApplicationList(), nodeHealthStatus, containerMemoryStatuses);
 
     return nodeStatus;
   }
@@ -386,6 +386,17 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
           + " container statuses: " + containerStatuses);
     }
     return containerStatuses;
+  }
+
+
+  @VisibleForTesting
+  protected List<ContainerMemoryStatus> getContainerMemoryStatuses() throws IOException {
+    List<ContainerMemoryStatus> containerMemoryStatuses = ((ContainerManagerImpl)context.getContainerManager())
+            .getContainersMonitor().getContainerMemoryStatuses();
+    for(ContainerMemoryStatus cms: containerMemoryStatuses){
+      LOG.debug("ContainerMemoryStatus: " + cms);
+    }
+    return containerMemoryStatuses;
   }
   
   private List<ApplicationId> getRunningApplications() {
@@ -575,9 +586,13 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
         while (!isStopped) {
           // Send heartbeat
           try {
-            LOG.debug("enter heart beat...");
+            LOG.debug("enter heart beat in client.");
             NodeHeartbeatResponse response = null;
             NodeStatus nodeStatus = getNodeStatus(lastHeartBeatID);
+
+            LOG.debug(nodeStatus);
+
+
             
             NodeHeartbeatRequest request =
                 NodeHeartbeatRequest.newInstance(nodeStatus,
@@ -585,6 +600,10 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                     .getContainerTokenSecretManager().getCurrentKey(),
                   NodeStatusUpdaterImpl.this.context.getNMTokenSecretManager()
                     .getCurrentKey());
+//            NodeStatus checkStatus = request.getNodeStatus();
+//            List<ContainerMemoryStatus> containerMemoryStatuses = checkStatus.getContainerMemoryStatuses();
+//            LOG.debug("Size of container memory statuses before sending to RM is " + containerMemoryStatuses.size());
+
             response = resourceTracker.nodeHeartbeat(request);
             //get next heartbeat interval from response
             nextHeartBeatInterval = response.getNextHeartBeatInterval();
