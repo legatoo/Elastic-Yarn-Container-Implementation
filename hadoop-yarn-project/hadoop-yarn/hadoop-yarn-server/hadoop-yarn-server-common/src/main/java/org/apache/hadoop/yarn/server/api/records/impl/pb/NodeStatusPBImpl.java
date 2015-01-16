@@ -81,6 +81,10 @@ public class NodeStatusPBImpl extends NodeStatus {
     if (this.keepAliveApplications != null) {
       addKeepAliveApplicationsToProto();
     }
+
+    if (this.containerMemoryStatuses != null){
+      addContainerMemoryStatusesToProto();
+    }
   }
 
   private synchronized void mergeLocalToProto() {
@@ -131,6 +135,40 @@ public class NodeStatusPBImpl extends NodeStatus {
       }
     };
     builder.addAllContainersStatuses(iterable);
+  }
+
+  private synchronized void addContainerMemoryStatusesToProto() {
+    maybeInitBuilder();
+    builder.clearContainerMemoryStatuses();
+    if (containerMemoryStatuses == null)
+      return;
+    Iterable<ContainerMemoryStatusProto> iterable = new Iterable<ContainerMemoryStatusProto>() {
+      @Override
+      public Iterator<ContainerMemoryStatusProto> iterator() {
+        return new Iterator<ContainerMemoryStatusProto>() {
+
+          Iterator<ContainerMemoryStatus> iter = containerMemoryStatuses.iterator();
+
+          @Override
+          public boolean hasNext() {
+            return iter.hasNext();
+          }
+
+          @Override
+          public ContainerMemoryStatusProto next() {
+            return convertToProtoFormat(iter.next());
+          }
+
+          @Override
+          public void remove() {
+            throw new UnsupportedOperationException();
+
+          }
+        };
+
+      }
+    };
+    builder.addAllContainerMemoryStatuses(iterable);
   }
 
   private synchronized void addKeepAliveApplicationsToProto() {

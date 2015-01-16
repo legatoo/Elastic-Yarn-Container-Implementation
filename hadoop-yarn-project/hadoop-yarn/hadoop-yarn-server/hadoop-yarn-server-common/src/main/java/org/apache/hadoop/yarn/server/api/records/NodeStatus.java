@@ -39,7 +39,7 @@ public abstract class NodeStatus {
     nodeStatus.setContainersStatuses(containerStatuses);
     nodeStatus.setKeepAliveApplications(keepAliveApplications);
     nodeStatus.setNodeHealthStatus(nodeHealthStatus);
-      nodeStatus.setContainerMemoryStatuses(containerMemoryStatuses);
+    nodeStatus.setContainerMemoryStatuses(containerMemoryStatuses);
     return nodeStatus;
   }
 
