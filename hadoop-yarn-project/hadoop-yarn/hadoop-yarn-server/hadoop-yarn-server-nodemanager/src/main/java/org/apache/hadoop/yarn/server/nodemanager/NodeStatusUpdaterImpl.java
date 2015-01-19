@@ -344,9 +344,9 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
 
     //TODO: call container monitor from context
     List<ContainerMemoryStatus> containerMemoryStatuses = getContainerMemoryStatuses();
-    if (!containerMemoryStatuses.isEmpty()){
-      LOG.debug("Step #3 , size is " + containerMemoryStatuses.size());
-    }
+//    if (!containerMemoryStatuses.isEmpty()){
+//      LOG.debug("Step #3 , size is " + containerMemoryStatuses.size());
+//    }
 
     NodeStatus nodeStatus =
         NodeStatus.newInstance(nodeId, responseId, containersStatuses,
@@ -399,9 +399,9 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
 //    for(ContainerMemoryStatus cms: containerMemoryStatuses){
 //      LOG.debug("ContainerMemoryStatus: " + cms);
 //    }
-    if(!containerMemoryStatuses.isEmpty()){
-      LOG.debug("Step #2 , size is " + containerMemoryStatuses.size() );
-    }
+//    if(!containerMemoryStatuses.isEmpty()){
+//      LOG.debug("Step #2 , size is " + containerMemoryStatuses.size() );
+//    }
     return containerMemoryStatuses;
   }
   
@@ -605,11 +605,11 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                   NodeStatusUpdaterImpl.this.context.getNMTokenSecretManager()
                     .getCurrentKey());
 
-            NodeStatus checkStatus = request.getNodeStatus();
-            List<ContainerMemoryStatus> containerMemoryStatuses = checkStatus.getContainerMemoryStatuses();
-            if(!containerMemoryStatuses.isEmpty()) {
-              LOG.debug("Step #4, size is " + containerMemoryStatuses.size());
-            }
+//            NodeStatus checkStatus = request.getNodeStatus();
+//            List<ContainerMemoryStatus> containerMemoryStatuses = checkStatus.getContainerMemoryStatuses();
+//            if(!containerMemoryStatuses.isEmpty()) {
+//              LOG.debug("Step #4, size is " + containerMemoryStatuses.size());
+//            }
 
             response = resourceTracker.nodeHeartbeat(request);
             //get next heartbeat interval from response
@@ -620,6 +620,12 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
             if (response.getFlag()) {
               String flagValue = response.getFlag() ? "True" : "False";
               LOG.debug("Get flag, value is " + flagValue);
+            }
+
+            //check containers to be squeezed
+            if ( response.getContainersToBeSqueezed().isEmpty()){
+              LOG.debug("Get containers to be squeezd from RM" );
+
             }
 
             if (response.getNodeAction() == NodeAction.SHUTDOWN) {

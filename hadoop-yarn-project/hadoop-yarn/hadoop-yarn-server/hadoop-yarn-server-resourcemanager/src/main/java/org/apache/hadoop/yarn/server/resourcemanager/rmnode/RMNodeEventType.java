@@ -44,5 +44,8 @@ public enum RMNodeEventType {
   FINISHED_CONTAINERS_PULLED_BY_AM,
 
   // Source: NMLivelinessMonitor
-  EXPIRE
+  EXPIRE,
+
+  // Source: ResourceTrackerService or a extra scheduler
+  CONTAINER_SQUEEZE
 }

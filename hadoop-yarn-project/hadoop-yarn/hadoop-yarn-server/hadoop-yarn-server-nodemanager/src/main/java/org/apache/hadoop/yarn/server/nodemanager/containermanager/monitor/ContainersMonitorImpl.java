@@ -619,9 +619,9 @@ public class ContainersMonitorImpl extends AbstractService implements
               returnContainerMemStatuses.add(containerMemStatus);
           }
       }
-      if(!returnContainerMemStatuses.isEmpty()){
-          LOG.debug("Step #1 , size is "+ returnContainerMemStatuses.size());
-      }
+//      if(!returnContainerMemStatuses.isEmpty()){
+//          LOG.debug("Step #1 , size is "+ returnContainerMemStatuses.size());
+//      }
       return returnContainerMemStatuses;
   }
 }

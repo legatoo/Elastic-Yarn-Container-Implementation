@@ -54,6 +54,7 @@ public class NodeHeartbeatResponsePBImpl extends
   private List<ContainerId> containersToCleanup = null;
   private List<ContainerId> containersToBeRemovedFromNM = null;
   private List<ApplicationId> applicationsToCleanup = null;
+  private List<ContainerId> containersToBeSqueezed = null;
   private Map<ApplicationId, ByteBuffer> systemCredentials = null;
 
   private MasterKey containerTokenMasterKey = null;
@@ -95,6 +96,9 @@ public class NodeHeartbeatResponsePBImpl extends
     }
     if (this.systemCredentials != null) {
       addSystemCredentialsToProto();
+    }
+    if (this.containersToBeSqueezed != null){
+      addContainersToBeSqueezedToProto();
     }
   }
 
@@ -242,6 +246,12 @@ public class NodeHeartbeatResponsePBImpl extends
     return this.containersToBeRemovedFromNM;
   }
 
+  @Override
+  public List<ContainerId> getContainersToBeSqueezed(){
+    initContainersToBeSqueezed();
+    return this.containersToBeSqueezed;
+  }
+
   private void initContainersToCleanup() {
     if (this.containersToCleanup != null) {
       return;
@@ -268,6 +278,19 @@ public class NodeHeartbeatResponsePBImpl extends
     }
   }
 
+  private void initContainersToBeSqueezed(){
+    if (this.containersToBeSqueezed != null) {
+      return;
+    }
+    NodeHeartbeatResponseProtoOrBuilder p = viaProto ? proto : builder;
+    List<ContainerIdProto> list = p.getContainersToBeSqueezedList();
+    this.containersToBeSqueezed = new ArrayList<ContainerId>();
+
+    for (ContainerIdProto c : list) {
+      this.containersToBeSqueezed.add(convertFromProtoFormat(c));
+    }
+  }
+
   @Override
   public void addAllContainersToCleanup(
       final List<ContainerId> containersToCleanup) {
@@ -284,6 +307,15 @@ public class NodeHeartbeatResponsePBImpl extends
       return;
     initContainersToBeRemovedFromNM();
     this.containersToBeRemovedFromNM.addAll(containers);
+  }
+
+  @Override
+  public void addAllContainersToBeSqueezed(
+          List<ContainerId> containersToBeSqueezed) {
+    if (containersToBeSqueezed == null)
+      return;
+    initContainersToBeSqueezed();
+    this.containersToBeSqueezed.addAll(containersToBeSqueezed);
   }
 
   private void addContainersToCleanupToProto() {
@@ -354,6 +386,41 @@ public class NodeHeartbeatResponsePBImpl extends
       }
     };
     builder.addAllContainersToBeRemovedFromNm(iterable);
+  }
+
+  private void addContainersToBeSqueezedToProto() {
+    maybeInitBuilder();
+    builder.clearContainersToBeSqueezed();
+    if (containersToBeSqueezed == null)
+      return;
+    Iterable<ContainerIdProto> iterable = new Iterable<ContainerIdProto>() {
+
+      @Override
+      public Iterator<ContainerIdProto> iterator() {
+        return new Iterator<ContainerIdProto>() {
+
+          Iterator<ContainerId> iter = containersToBeSqueezed.iterator();
+
+          @Override
+          public boolean hasNext() {
+            return iter.hasNext();
+          }
+
+          @Override
+          public ContainerIdProto next() {
+            return convertToProtoFormat(iter.next());
+          }
+
+          @Override
+          public void remove() {
+            throw new UnsupportedOperationException();
+
+          }
+        };
+
+      }
+    };
+    builder.addAllContainersToBeSqueezed(iterable);
   }
 
   @Override

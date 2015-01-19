@@ -119,6 +119,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
   private final Set<ContainerId> containersToBeRemovedFromNM =
       new HashSet<ContainerId>();
 
+    private final Set<ContainerId> containersToBeSqueezed = new HashSet<ContainerId>();
+
   /* the list of applications that have finished and need to be purged */
   private final List<ApplicationId> finishedApplications = new ArrayList<ApplicationId>();
 
@@ -165,11 +167,13 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
          RMNodeEventType.RECONNECTED, new ReconnectNodeTransition())
      .addTransition(NodeState.RUNNING, NodeState.RUNNING,
          RMNodeEventType.RESOURCE_UPDATE, new UpdateNodeResourceWhenRunningTransition())
+     .addTransition(NodeState.RUNNING, NodeState.RUNNING,
+             RMNodeEventType.CONTAINER_SQUEEZE, new SqueezeContainerTransition())
 
      //Transitions from REBOOTED state
      .addTransition(NodeState.REBOOTED, NodeState.REBOOTED,
-         RMNodeEventType.RESOURCE_UPDATE,
-         new UpdateNodeResourceWhenUnusableTransition())
+             RMNodeEventType.RESOURCE_UPDATE,
+             new UpdateNodeResourceWhenUnusableTransition())
          
      //Transitions from DECOMMISSIONED state
      .addTransition(NodeState.DECOMMISSIONED, NodeState.DECOMMISSIONED,
@@ -212,6 +216,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
      .addTransition(NodeState.UNHEALTHY, NodeState.UNHEALTHY,
          RMNodeEventType.FINISHED_CONTAINERS_PULLED_BY_AM,
          new AddContainersToBeRemovedFromNMTransition())
+     .addTransition(NodeState.UNHEALTHY, NodeState.UNHEALTHY,
+             RMNodeEventType.CONTAINER_SQUEEZE, new SqueezeContainerTransition())
 
      // create the topology tables
      .installTopology(); 
@@ -387,6 +393,9 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
       response.addAllApplicationsToCleanup(this.finishedApplications);
       response.addContainersToBeRemovedFromNM(
           new ArrayList<ContainerId>(this.containersToBeRemovedFromNM));
+        // RMNode will clear the information about containersToClean etc. at the end
+        // of heart beat
+
       this.containersToClean.clear();
       this.finishedApplications.clear();
       this.containersToBeRemovedFromNM.clear();
@@ -396,6 +405,21 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
   };
 
   @Override
+  public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response) {
+      this.writeLock.lock();
+
+      try {
+          // RMNode will clear the information about containersToClean etc. at the end
+          // of heart beat
+          response.addAllContainersToBeSqueezed(
+                  new ArrayList<ContainerId>(this.containersToClean));
+          this.containersToBeSqueezed.clear();
+      } finally {
+          this.writeLock.unlock();
+      }
+  };
+
+    @Override
   public NodeHeartbeatResponse getLastNodeHeartBeatResponse() {
 
     this.readLock.lock();
@@ -651,6 +675,16 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
           RMNodeCleanAppEvent) event).getAppId());
     }
   }
+
+    public static class SqueezeContainerTransition
+            implements SingleArcTransition<RMNodeImpl, RMNodeEvent> {
+        @Override
+        public void transition(RMNodeImpl rmNode, RMNodeEvent event) {
+            rmNode.containersToBeSqueezed.add(((
+                    RMNodeContainerSqueezeEvent) event).getContainerId());
+        }
+    }
+
 
   public static class CleanUpContainerTransition implements
       SingleArcTransition<RMNodeImpl, RMNodeEvent> {

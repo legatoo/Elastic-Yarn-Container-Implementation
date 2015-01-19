@@ -428,6 +428,7 @@ public class ResourceTrackerService extends AbstractService implements
         .newNodeHeartbeatResponse(lastNodeHeartbeatResponse.
             getResponseId() + 1, NodeAction.NORMAL, null, null, null, null,
             nextHeartBeatInterval);
+      //rmNode is the specific node getting by the nodeId
     rmNode.updateNodeHeartbeatResponseForCleanup(nodeHeartBeatResponse);
 
     populateKeys(request, nodeHeartBeatResponse);
@@ -442,7 +443,8 @@ public class ResourceTrackerService extends AbstractService implements
     this.rmContext.getDispatcher().getEventHandler().handle(
         new RMNodeStatusEvent(nodeId, remoteNodeStatus.getNodeHealthStatus(),
             remoteNodeStatus.getContainersStatuses(), 
-            remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse));
+            remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse,
+                containerMemoryStatuses));
     LOG.debug("send heart beat response to RMNode..." + nodeHeartBeatResponse);
     return nodeHeartBeatResponse;
   }

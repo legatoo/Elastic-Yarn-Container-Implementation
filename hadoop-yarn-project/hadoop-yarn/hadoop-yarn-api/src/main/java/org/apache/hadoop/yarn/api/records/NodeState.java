@@ -37,13 +37,16 @@ public enum NodeState {
   UNHEALTHY, 
   
   /** Node is out of service */
-  DECOMMISSIONED, 
+  DECOMMISSIONED,
   
   /** Node has not sent a heartbeat for some configured time threshold*/
   LOST, 
   
   /** Node has rebooted */
   REBOOTED;
+
+//  /** Node has Sqeezed containers **/
+//  SQUEEZED;
   
   public boolean isUnusable() {
     return (this == UNHEALTHY || this == DECOMMISSIONED || this == LOST);

@@ -51,6 +51,7 @@ public class YarnServerBuilderUtils {
     response.setContainerTokenMasterKey(containerTokenMasterKey);
     response.setNMTokenMasterKey(nmTokenMasterKey);
     response.setNextHeartBeatInterval(nextHeartbeatInterval);
+
     response.setFlag(true);
     if(containersToCleanUp != null) {
       response.addAllContainersToCleanup(containersToCleanUp);

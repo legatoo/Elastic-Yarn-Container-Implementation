@@ -18,11 +18,10 @@
 
 package org.apache.hadoop.yarn.server.resourcemanager.rmnode;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ContainerStatus;
-import org.apache.hadoop.yarn.api.records.NodeId;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.server.api.protocolrecords.NodeHeartbeatResponse;
 import org.apache.hadoop.yarn.server.api.records.NodeHealthStatus;
 
@@ -32,15 +31,18 @@ public class RMNodeStatusEvent extends RMNodeEvent {
   private final List<ContainerStatus> containersCollection;
   private final NodeHeartbeatResponse latestResponse;
   private final List<ApplicationId> keepAliveAppIds;
+  private final List<ContainerMemoryStatus> containerSqueezeCollection;
 
   public RMNodeStatusEvent(NodeId nodeId, NodeHealthStatus nodeHealthStatus,
       List<ContainerStatus> collection, List<ApplicationId> keepAliveAppIds,
-      NodeHeartbeatResponse latestResponse) {
+      NodeHeartbeatResponse latestResponse,
+      List<ContainerMemoryStatus> containerMemoryStatuses) {
     super(nodeId, RMNodeEventType.STATUS_UPDATE);
     this.nodeHealthStatus = nodeHealthStatus;
     this.containersCollection = collection;
     this.keepAliveAppIds = keepAliveAppIds;
     this.latestResponse = latestResponse;
+    this.containerSqueezeCollection = containerMemoryStatuses;
   }
 
   public NodeHealthStatus getNodeHealthStatus() {
@@ -58,4 +60,6 @@ public class RMNodeStatusEvent extends RMNodeEvent {
   public List<ApplicationId> getKeepAliveAppIds() {
     return this.keepAliveAppIds;
   }
+
+  public List<ContainerMemoryStatus> getContainerToBeSqueezed() {return this.containerSqueezeCollection;}
 }
