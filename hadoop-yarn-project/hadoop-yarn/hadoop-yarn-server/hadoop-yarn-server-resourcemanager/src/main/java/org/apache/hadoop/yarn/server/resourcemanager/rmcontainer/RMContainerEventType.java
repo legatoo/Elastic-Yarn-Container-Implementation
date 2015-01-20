@@ -35,5 +35,7 @@ public enum RMContainerEventType {
   // Source: ContainerAllocationExpirer  
   EXPIRE,
 
-  RECOVER
+  RECOVER,
+
+  SQUEEZE;
 }

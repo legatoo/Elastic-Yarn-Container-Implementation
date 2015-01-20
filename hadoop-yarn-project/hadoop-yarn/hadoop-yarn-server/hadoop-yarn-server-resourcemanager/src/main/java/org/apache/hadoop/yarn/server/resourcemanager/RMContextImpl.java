@@ -36,6 +36,8 @@ import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.server.resourcemanager.ahs.RMApplicationHistoryWriter;
 import org.apache.hadoop.yarn.server.resourcemanager.metrics.SystemMetricsPublisher;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.RMNodeLabelsManager;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicResourceScheduler;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicResourceSchedulerImpl;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore;
 import org.apache.hadoop.yarn.server.resourcemanager.reservation.ReservationSystem;
@@ -97,6 +99,9 @@ public class RMContextImpl implements RMContext {
   private SystemMetricsPublisher systemMetricsPublisher;
   private ConfigurationProvider configurationProvider;
   private RMNodeLabelsManager nodeLabelManager;
+
+  private PeriodicResourceScheduler periodicResourceScheduler;
+
   private long epoch;
   private Clock systemClock = new SystemClock();
   private long schedulerRecoveryStartTime = 0;
@@ -125,7 +130,8 @@ public class RMContextImpl implements RMContext {
       RMContainerTokenSecretManager containerTokenSecretManager,
       NMTokenSecretManagerInRM nmTokenSecretManager,
       ClientToAMTokenSecretManagerInRM clientToAMTokenSecretManager,
-      RMApplicationHistoryWriter rmApplicationHistoryWriter) {
+      RMApplicationHistoryWriter rmApplicationHistoryWriter,
+      PeriodicResourceSchedulerImpl periodicResourceScheduler) {
     this();
     this.setDispatcher(rmDispatcher);
     this.setContainerAllocationExpirer(containerAllocationExpirer);
@@ -137,6 +143,7 @@ public class RMContextImpl implements RMContext {
     this.setNMTokenSecretManager(nmTokenSecretManager);
     this.setClientToAMTokenSecretManager(clientToAMTokenSecretManager);
     this.setRMApplicationHistoryWriter(rmApplicationHistoryWriter);
+    this.setPeriodicResourceScheduler(periodicResourceScheduler);
 
     RMStateStore nullStore = new NullRMStateStore();
     nullStore.setRMDispatcher(rmDispatcher);
@@ -288,6 +295,16 @@ public class RMContextImpl implements RMContext {
   public void setRMDelegationTokenSecretManager(
       RMDelegationTokenSecretManager delegationTokenSecretManager) {
     this.rmDelegationTokenSecretManager = delegationTokenSecretManager;
+  }
+
+  @Override
+  public PeriodicResourceScheduler getPeriodicResourceScheduler() {
+    return this.periodicResourceScheduler;
+  }
+
+  @Override
+  public void setPeriodicResourceScheduler(PeriodicResourceScheduler periodicResourceScheduler) {
+    this.periodicResourceScheduler = periodicResourceScheduler;
   }
 
   void setContainerAllocationExpirer(

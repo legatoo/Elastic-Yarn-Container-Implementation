@@ -49,6 +49,7 @@ import org.apache.hadoop.yarn.server.api.protocolrecords.RegisterNodeManagerResp
 import org.apache.hadoop.yarn.server.api.records.MasterKey;
 import org.apache.hadoop.yarn.server.api.records.NodeAction;
 import org.apache.hadoop.yarn.server.api.records.NodeStatus;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerStatusEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.attempt.RMAppAttempt;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.attempt.event.RMAppAttemptContainerFinishedEvent;
@@ -375,6 +376,9 @@ public class ResourceTrackerService extends AbstractService implements
         LOG.debug("Receive 0 container memory usage from NM");
     }
 
+//    // add containerMemoryStatuses to periodicResourceSchedulerService
+//    this.rmContext.getPeriodicResourceSchedulerService().collectContainerMemoryStatusesFromNMs(
+//            containerMemoryStatuses, nodeId);
 
     // 1. Check if it's a registered node
     RMNode rmNode = this.rmContext.getRMNodes().get(nodeId);
@@ -445,7 +449,18 @@ public class ResourceTrackerService extends AbstractService implements
             remoteNodeStatus.getContainersStatuses(), 
             remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse,
                 containerMemoryStatuses));
-    LOG.debug("send heart beat response to RMNode..." + nodeHeartBeatResponse);
+    this.rmContext.getDispatcher().getEventHandler().handle(
+            new PeriodicSchedulerStatusEvent(nodeId, containerMemoryStatuses));
+
+    //check if periodic scheduler got the containers
+    List<ContainerId> checkContainers = this.rmContext.getPeriodicResourceScheduler().getContainersToSqueezed();
+    if (checkContainers.isEmpty()) {
+        LOG.debug("Periodic scheduler have no contaienrs information.");
+    } else {
+        for (ContainerId id : checkContainers){
+            LOG.debug("Periodic Scheduler got: " + id);
+        }
+    }
     return nodeHeartBeatResponse;
   }
 

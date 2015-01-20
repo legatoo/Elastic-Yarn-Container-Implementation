@@ -29,6 +29,8 @@ import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.server.resourcemanager.ahs.RMApplicationHistoryWriter;
 import org.apache.hadoop.yarn.server.resourcemanager.metrics.SystemMetricsPublisher;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.RMNodeLabelsManager;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicResourceScheduler;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicResourceSchedulerImpl;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore;
 import org.apache.hadoop.yarn.server.resourcemanager.reservation.ReservationSystem;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
@@ -91,6 +93,10 @@ public interface RMContext {
   ApplicationMasterService getApplicationMasterService();
 
   ResourceTrackerService getResourceTrackerService();
+
+  PeriodicResourceScheduler getPeriodicResourceScheduler();
+  void setPeriodicResourceScheduler(
+          PeriodicResourceScheduler periodicResourceScheduler);
 
   void setClientRMService(ClientRMService clientRMService);
 

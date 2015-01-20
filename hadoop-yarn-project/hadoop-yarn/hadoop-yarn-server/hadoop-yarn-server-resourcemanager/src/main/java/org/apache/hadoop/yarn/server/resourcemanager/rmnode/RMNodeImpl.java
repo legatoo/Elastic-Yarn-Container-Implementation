@@ -119,7 +119,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
   private final Set<ContainerId> containersToBeRemovedFromNM =
       new HashSet<ContainerId>();
 
-    private final Set<ContainerId> containersToBeSqueezed = new HashSet<ContainerId>();
+  private final Set<ContainerId> containersToBeSqueezed = new TreeSet<ContainerId>(
+          new ContainerIdComparator());
 
   /* the list of applications that have finished and need to be purged */
   private final List<ApplicationId> finishedApplications = new ArrayList<ApplicationId>();
@@ -140,16 +141,16 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
      .addTransition(NodeState.NEW, NodeState.RUNNING, 
          RMNodeEventType.STARTED, new AddNodeTransition())
      .addTransition(NodeState.NEW, NodeState.NEW,
-         RMNodeEventType.RESOURCE_UPDATE, 
-         new UpdateNodeResourceWhenUnusableTransition())
+             RMNodeEventType.RESOURCE_UPDATE,
+             new UpdateNodeResourceWhenUnusableTransition())
 
      //Transitions from RUNNING state
      .addTransition(NodeState.RUNNING,
-         EnumSet.of(NodeState.RUNNING, NodeState.UNHEALTHY),
-         RMNodeEventType.STATUS_UPDATE, new StatusUpdateWhenHealthyTransition())
+             EnumSet.of(NodeState.RUNNING, NodeState.UNHEALTHY),
+             RMNodeEventType.STATUS_UPDATE, new StatusUpdateWhenHealthyTransition())
      .addTransition(NodeState.RUNNING, NodeState.DECOMMISSIONED,
-         RMNodeEventType.DECOMMISSION,
-         new DeactivateNodeTransition(NodeState.DECOMMISSIONED))
+             RMNodeEventType.DECOMMISSION,
+             new DeactivateNodeTransition(NodeState.DECOMMISSIONED))
      .addTransition(NodeState.RUNNING, NodeState.LOST,
          RMNodeEventType.EXPIRE,
          new DeactivateNodeTransition(NodeState.LOST))
@@ -177,28 +178,28 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
          
      //Transitions from DECOMMISSIONED state
      .addTransition(NodeState.DECOMMISSIONED, NodeState.DECOMMISSIONED,
-         RMNodeEventType.RESOURCE_UPDATE,
-         new UpdateNodeResourceWhenUnusableTransition())
+             RMNodeEventType.RESOURCE_UPDATE,
+             new UpdateNodeResourceWhenUnusableTransition())
      .addTransition(NodeState.DECOMMISSIONED, NodeState.DECOMMISSIONED,
-         RMNodeEventType.FINISHED_CONTAINERS_PULLED_BY_AM,
-         new AddContainersToBeRemovedFromNMTransition())
+             RMNodeEventType.FINISHED_CONTAINERS_PULLED_BY_AM,
+             new AddContainersToBeRemovedFromNMTransition())
 
      //Transitions from LOST state
      .addTransition(NodeState.LOST, NodeState.LOST,
-         RMNodeEventType.RESOURCE_UPDATE,
-         new UpdateNodeResourceWhenUnusableTransition())
+             RMNodeEventType.RESOURCE_UPDATE,
+             new UpdateNodeResourceWhenUnusableTransition())
      .addTransition(NodeState.LOST, NodeState.LOST,
-         RMNodeEventType.FINISHED_CONTAINERS_PULLED_BY_AM,
-         new AddContainersToBeRemovedFromNMTransition())
+             RMNodeEventType.FINISHED_CONTAINERS_PULLED_BY_AM,
+             new AddContainersToBeRemovedFromNMTransition())
 
      //Transitions from UNHEALTHY state
      .addTransition(NodeState.UNHEALTHY,
-         EnumSet.of(NodeState.UNHEALTHY, NodeState.RUNNING),
-         RMNodeEventType.STATUS_UPDATE,
-         new StatusUpdateWhenUnHealthyTransition())
+             EnumSet.of(NodeState.UNHEALTHY, NodeState.RUNNING),
+             RMNodeEventType.STATUS_UPDATE,
+             new StatusUpdateWhenUnHealthyTransition())
      .addTransition(NodeState.UNHEALTHY, NodeState.DECOMMISSIONED,
-         RMNodeEventType.DECOMMISSION,
-         new DeactivateNodeTransition(NodeState.DECOMMISSIONED))
+             RMNodeEventType.DECOMMISSION,
+             new DeactivateNodeTransition(NodeState.DECOMMISSIONED))
      .addTransition(NodeState.UNHEALTHY, NodeState.LOST,
          RMNodeEventType.EXPIRE,
          new DeactivateNodeTransition(NodeState.LOST))

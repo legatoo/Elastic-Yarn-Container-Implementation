@@ -116,6 +116,11 @@ public class MockNodes {
     }
 
     @Override
+    public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response) {
+
+    }
+
+    @Override
     public NodeId getNodeID() {
       return this.nodeId;
     }

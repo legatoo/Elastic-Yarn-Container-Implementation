@@ -105,7 +105,7 @@ public class TestRMNodeTransitions {
     
     rmContext =
         new RMContextImpl(rmDispatcher, null, null, null,
-            mock(DelegationTokenRenewer.class), null, null, null, null, null);
+            mock(DelegationTokenRenewer.class), null, null, null, null, null,null);
     NodesListManager nodesListManager = mock(NodesListManager.class);
     HostsFileReader reader = mock(HostsFileReader.class);
     when(nodesListManager.getHostsReader()).thenReturn(reader);
@@ -476,7 +476,7 @@ public class TestRMNodeTransitions {
     NodeHealthStatus status = NodeHealthStatus.newInstance(false, "sick",
         System.currentTimeMillis());
     node.handle(new RMNodeStatusEvent(node.getNodeID(), status,
-        new ArrayList<ContainerStatus>(), null, null));
+        new ArrayList<ContainerStatus>(), null, null, null));
     Assert.assertEquals(NodeState.UNHEALTHY, node.getState());
     return node;
   }

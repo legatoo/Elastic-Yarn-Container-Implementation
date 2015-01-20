@@ -69,6 +69,10 @@ import org.apache.hadoop.yarn.server.resourcemanager.monitor.SchedulingEditPolic
 import org.apache.hadoop.yarn.server.resourcemanager.monitor.SchedulingMonitor;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.MemoryRMNodeLabelsManager;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.RMNodeLabelsManager;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicResourceScheduler;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicResourceSchedulerImpl;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerEventType;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore.RMState;
@@ -162,6 +166,7 @@ public class ResourceManager extends CompositeService implements Recoverable {
   private WebApp webApp;
   private AppReportFetcher fetcher = null;
   protected ResourceTrackerService resourceTracker;
+  protected PeriodicResourceSchedulerImpl periodicResourceScheduler;
 
   @VisibleForTesting
   protected String webAppAddress;
@@ -486,6 +491,13 @@ public class ResourceManager extends CompositeService implements Recoverable {
       addIfService(scheduler);
       rmContext.setScheduler(scheduler);
 
+      periodicResourceScheduler = new PeriodicResourceSchedulerImpl(rmContext);
+      rmDispatcher.register(
+              PeriodicSchedulerEventType.class, periodicResourceScheduler);
+      addService(periodicResourceScheduler);
+      rmContext.setPeriodicResourceScheduler(periodicResourceScheduler);
+
+
       schedulerDispatcher = createSchedulerEventDispatcher();
       addIfService(schedulerDispatcher);
       rmDispatcher.register(SchedulerEventType.class, schedulerDispatcher);
@@ -501,6 +513,7 @@ public class ResourceManager extends CompositeService implements Recoverable {
       // Register event handler for RmNodes
       rmDispatcher.register(
           RMNodeEventType.class, new NodeEventDispatcher(rmContext));
+
 
       nmLivelinessMonitor = createNMLivelinessMonitor();
       addService(nmLivelinessMonitor);
@@ -861,6 +874,30 @@ public class ResourceManager extends CompositeService implements Recoverable {
         } catch (Throwable t) {
           LOG.error("Error in handling event type " + event.getType()
               + " for node " + nodeId, t);
+        }
+      }
+    }
+  }
+
+  @Private
+  public static final class PeriodicSchedulerDispatcher implements
+          EventHandler<PeriodicSchedulerEvent> {
+
+    private final RMContext rmContext;
+
+    public PeriodicSchedulerDispatcher(RMContext rmContext) {
+      this.rmContext = rmContext;
+    }
+
+    @Override
+    public void handle(PeriodicSchedulerEvent event) {
+      PeriodicResourceScheduler ps = this.rmContext.getPeriodicResourceScheduler();
+      if (ps != null) {
+        try {
+          ((EventHandler<PeriodicSchedulerEvent>) ps).handle(event);
+        } catch (Throwable t) {
+          LOG.error("Error in handling event type " + event.getType()
+                  + " for periodic scheduler.");
         }
       }
     }
