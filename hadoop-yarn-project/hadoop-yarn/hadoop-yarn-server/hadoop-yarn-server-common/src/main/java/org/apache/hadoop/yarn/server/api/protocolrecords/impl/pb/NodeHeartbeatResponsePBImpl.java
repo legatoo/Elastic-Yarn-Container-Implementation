@@ -27,12 +27,13 @@ import java.util.Map;
 
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.impl.pb.ApplicationIdPBImpl;
-import org.apache.hadoop.yarn.api.records.impl.pb.ContainerIdPBImpl;
-import org.apache.hadoop.yarn.api.records.impl.pb.ProtoBase;
-import org.apache.hadoop.yarn.api.records.impl.pb.ProtoUtils;
+import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
+import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
+import org.apache.hadoop.yarn.api.records.impl.pb.*;
+import org.apache.hadoop.yarn.proto.YarnProtos;
 import org.apache.hadoop.yarn.proto.YarnProtos.ApplicationIdProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerIdProto;
+import org.apache.hadoop.yarn.proto.YarnProtos.ContainerSqueezeUnitProto;
 import org.apache.hadoop.yarn.proto.YarnServerCommonProtos.MasterKeyProto;
 import org.apache.hadoop.yarn.proto.YarnServerCommonProtos.NodeActionProto;
 import org.apache.hadoop.yarn.proto.YarnServerCommonServiceProtos.NodeHeartbeatResponseProto;
@@ -54,7 +55,7 @@ public class NodeHeartbeatResponsePBImpl extends
   private List<ContainerId> containersToCleanup = null;
   private List<ContainerId> containersToBeRemovedFromNM = null;
   private List<ApplicationId> applicationsToCleanup = null;
-  private List<ContainerId> containersToBeSqueezed = null;
+  private List<ContainerSqueezeUnit> containersToBeSqueezed = null;
   private Map<ApplicationId, ByteBuffer> systemCredentials = null;
 
   private MasterKey containerTokenMasterKey = null;
@@ -247,7 +248,7 @@ public class NodeHeartbeatResponsePBImpl extends
   }
 
   @Override
-  public List<ContainerId> getContainersToBeSqueezed(){
+  public List<ContainerSqueezeUnit> getContainersToBeSqueezed(){
     initContainersToBeSqueezed();
     return this.containersToBeSqueezed;
   }
@@ -283,10 +284,10 @@ public class NodeHeartbeatResponsePBImpl extends
       return;
     }
     NodeHeartbeatResponseProtoOrBuilder p = viaProto ? proto : builder;
-    List<ContainerIdProto> list = p.getContainersToBeSqueezedList();
-    this.containersToBeSqueezed = new ArrayList<ContainerId>();
+    List<ContainerSqueezeUnitProto> list = p.getContainersToBeSqueezedList();
+    this.containersToBeSqueezed = new ArrayList<ContainerSqueezeUnit>();
 
-    for (ContainerIdProto c : list) {
+    for (ContainerSqueezeUnitProto c : list) {
       this.containersToBeSqueezed.add(convertFromProtoFormat(c));
     }
   }
@@ -311,7 +312,7 @@ public class NodeHeartbeatResponsePBImpl extends
 
   @Override
   public void addAllContainersToBeSqueezed(
-          List<ContainerId> containersToBeSqueezed) {
+          List<ContainerSqueezeUnit> containersToBeSqueezed) {
     if (containersToBeSqueezed == null)
       return;
     initContainersToBeSqueezed();
@@ -393,13 +394,13 @@ public class NodeHeartbeatResponsePBImpl extends
     builder.clearContainersToBeSqueezed();
     if (containersToBeSqueezed == null)
       return;
-    Iterable<ContainerIdProto> iterable = new Iterable<ContainerIdProto>() {
+    Iterable<ContainerSqueezeUnitProto> iterable = new Iterable<ContainerSqueezeUnitProto>() {
 
       @Override
-      public Iterator<ContainerIdProto> iterator() {
-        return new Iterator<ContainerIdProto>() {
+      public Iterator<ContainerSqueezeUnitProto> iterator() {
+        return new Iterator<ContainerSqueezeUnitProto>() {
 
-          Iterator<ContainerId> iter = containersToBeSqueezed.iterator();
+          Iterator<ContainerSqueezeUnit> iter = containersToBeSqueezed.iterator();
 
           @Override
           public boolean hasNext() {
@@ -407,7 +408,7 @@ public class NodeHeartbeatResponsePBImpl extends
           }
 
           @Override
-          public ContainerIdProto next() {
+          public ContainerSqueezeUnitProto next() {
             return convertToProtoFormat(iter.next());
           }
 
@@ -534,6 +535,13 @@ public class NodeHeartbeatResponsePBImpl extends
     return new ContainerIdPBImpl(p);
   }
 
+  private ContainerSqueezeUnitPBImpl convertFromProtoFormat (ContainerSqueezeUnitProto p){
+    return new ContainerSqueezeUnitPBImpl(p);
+  }
+
+  private ContainerSqueezeUnitProto convertToProtoFormat (ContainerSqueezeUnit r){
+    return ((ContainerSqueezeUnitPBImpl)r).getProto();
+  }
   private ContainerIdProto convertToProtoFormat(ContainerId t) {
     return ((ContainerIdPBImpl) t).getProto();
   }

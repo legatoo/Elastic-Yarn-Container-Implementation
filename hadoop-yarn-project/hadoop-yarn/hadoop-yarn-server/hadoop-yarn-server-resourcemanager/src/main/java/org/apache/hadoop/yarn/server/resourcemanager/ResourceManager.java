@@ -878,30 +878,6 @@ public class ResourceManager extends CompositeService implements Recoverable {
       }
     }
   }
-
-  @Private
-  public static final class PeriodicSchedulerDispatcher implements
-          EventHandler<PeriodicSchedulerEvent> {
-
-    private final RMContext rmContext;
-
-    public PeriodicSchedulerDispatcher(RMContext rmContext) {
-      this.rmContext = rmContext;
-    }
-
-    @Override
-    public void handle(PeriodicSchedulerEvent event) {
-      PeriodicResourceScheduler ps = this.rmContext.getPeriodicResourceScheduler();
-      if (ps != null) {
-        try {
-          ((EventHandler<PeriodicSchedulerEvent>) ps).handle(event);
-        } catch (Throwable t) {
-          LOG.error("Error in handling event type " + event.getType()
-                  + " for periodic scheduler.");
-        }
-      }
-    }
-  }
   
   protected void startWepApp() {
 

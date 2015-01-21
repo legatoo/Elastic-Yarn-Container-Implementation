@@ -21,6 +21,7 @@ package org.apache.hadoop.yarn.server.resourcemanager.rmnode;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.hadoop.net.Node;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -144,4 +145,12 @@ public interface RMNode {
    * @return labels in this node
    */
   public Set<String> getNodeLabels();
+
+  /**
+   * Get the flag of squeeze operation
+   * @return squeeze operation flag
+   */
+  public AtomicBoolean getIfSqueeze();
+
+  public void setIfSqueeze(boolean flag);
 }

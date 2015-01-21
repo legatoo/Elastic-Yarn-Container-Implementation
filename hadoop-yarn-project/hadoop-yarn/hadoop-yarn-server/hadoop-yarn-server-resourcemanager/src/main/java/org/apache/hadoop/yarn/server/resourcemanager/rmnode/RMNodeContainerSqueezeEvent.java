@@ -12,7 +12,7 @@ public class RMNodeContainerSqueezeEvent extends RMNodeEvent{
     private ContainerId contId;
 
     public RMNodeContainerSqueezeEvent(NodeId nodeId, ContainerId contId) {
-        super(nodeId, RMNodeEventType.CONTAINER_SQUEEZE);
+        super(nodeId, RMNodeEventType.NODE_SQUEEZE);
         this.contId = contId;
     }
 

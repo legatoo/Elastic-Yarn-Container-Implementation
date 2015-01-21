@@ -5,18 +5,18 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.service.AbstractService;
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
-import org.apache.hadoop.yarn.api.records.NodeId;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.server.api.protocolrecords.NodeHeartbeatResponse;
 import org.apache.hadoop.yarn.server.resourcemanager.RMContext;
+import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeSqueezeEvent;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by steven on 1/19/15.
@@ -40,9 +40,18 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
     private final Map<ContainerId, ContainerMemoryStatus> runningContainersMemoryStatus
             = new ConcurrentHashMap<ContainerId, ContainerMemoryStatus>();
 
+    private final Map<ContainerId, NodeId> containerIdToNodeId = new HashMap<ContainerId, NodeId>();
     public PeriodicResourceSchedulerImpl(RMContext context) {
         super(PeriodicResourceSchedulerImpl.class.getName());
         this.context = context;
+    }
+
+    // when operating node squeeze, stop receive heartbeat information
+    private AtomicBoolean operating = new AtomicBoolean(false);
+
+    // TODO: proper algorithm to pick containers to be squeezed
+    public List<ContainerSqueezeUnit> pickContainers(){
+        return null;
     }
 
     @Override
@@ -54,9 +63,15 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
     @Override
     public List<ContainerId> getContainersToSqueezed() {
         List<ContainerId> containers = new ArrayList<ContainerId>();
-        for (ContainerId id : this.runningContainersMemoryStatus.keySet()){
-            containers.add(id);
+        synchronized (runningContainersMemoryStatus) {
+            for (ContainerId id : this.runningContainersMemoryStatus.keySet()) {
+                containers.add(id);
+
+            }
         }
+
+        // try to send a event to RM dispatcher (and set certain flag)
+
         return containers;
     }
 
@@ -73,8 +88,11 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
             if ( containerMemoryStatuses.isEmpty()) {
                 LOG.debug("Container memory status from " + nodeId);
             } else{
-                for (ContainerMemoryStatus c : containerMemoryStatuses){
-                    runningContainersMemoryStatus.put(c.getContainerId(), c);
+                synchronized (runningContainersMemoryStatus) {
+                    for (ContainerMemoryStatus c : containerMemoryStatuses) {
+                        runningContainersMemoryStatus.put(c.getContainerId(), c);
+                        containerIdToNodeId.put(c.getContainerId(), nodeId);
+                    }
                 }
             }
         }

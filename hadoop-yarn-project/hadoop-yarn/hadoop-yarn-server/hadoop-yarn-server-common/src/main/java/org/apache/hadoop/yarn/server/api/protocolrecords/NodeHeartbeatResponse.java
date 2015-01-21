@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ContainerId;
+import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
 import org.apache.hadoop.yarn.server.api.records.MasterKey;
 import org.apache.hadoop.yarn.server.api.records.NodeAction;
 
@@ -36,7 +37,7 @@ public interface NodeHeartbeatResponse {
   List<ContainerId> getContainersToBeRemovedFromNM();
 
   List<ApplicationId> getApplicationsToCleanup();
-  List<ContainerId> getContainersToBeSqueezed();
+  List<ContainerSqueezeUnit> getContainersToBeSqueezed();
 
   void setResponseId(int responseId);
   void setNodeAction(NodeAction action);
@@ -49,7 +50,7 @@ public interface NodeHeartbeatResponse {
   void setNMTokenMasterKey(MasterKey secretKey);
 
   void addAllContainersToCleanup(List<ContainerId> containers);
-  void addAllContainersToBeSqueezed(List<ContainerId> containers);
+  void addAllContainersToBeSqueezed(List<ContainerSqueezeUnit> containers);
 
 
   // This tells NM to remove finished containers from its context. Currently, NM

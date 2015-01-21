@@ -53,6 +53,12 @@ message ContainerIdProto {
   optional int64 id = 3;
 }
 
+message ContainerSqueezeUnitProto {
+  optional ContainerIdProto container_id = 1;
+  optional ResourceProto origin = 2;
+  optional ResourceProto target = 3;
+}
+
 message ResourceProto {
   optional int32 memory = 1;
   optional int32 virtual_cores = 2;

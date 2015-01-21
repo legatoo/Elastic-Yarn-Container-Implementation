@@ -21,6 +21,7 @@ package org.apache.hadoop.yarn.server.resourcemanager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.hadoop.net.Node;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -117,6 +118,16 @@ public class MockNodes {
 
     @Override
     public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response) {
+
+    }
+
+    @Override
+    public AtomicBoolean getIfSqueeze() {
+      return null;
+    }
+
+    @Override
+    public void setIfSqueeze(boolean flag) {
 
     }
 

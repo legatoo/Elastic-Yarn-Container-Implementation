@@ -432,8 +432,15 @@ public class ResourceTrackerService extends AbstractService implements
         .newNodeHeartbeatResponse(lastNodeHeartbeatResponse.
             getResponseId() + 1, NodeAction.NORMAL, null, null, null, null,
             nextHeartBeatInterval);
-      //rmNode is the specific node getting by the nodeId
+    //rmNode is the specific node getting by the nodeId
     rmNode.updateNodeHeartbeatResponseForCleanup(nodeHeartBeatResponse);
+
+    // x. check if this RMNode need to be squeezed
+    // TODO: if this node need squeeze operation, fill heartbeat response
+    if(rmNode.getIfSqueeze().get()) {
+        rmNode.updateNodeHeartbeatResponseForSqueeze(nodeHeartBeatResponse);
+        rmNode.setIfSqueeze(false);
+    }
 
     populateKeys(request, nodeHeartBeatResponse);
 
@@ -449,8 +456,11 @@ public class ResourceTrackerService extends AbstractService implements
             remoteNodeStatus.getContainersStatuses(), 
             remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse,
                 containerMemoryStatuses));
+
+    //5. Send container memory statuses to periodic scheduler
     this.rmContext.getDispatcher().getEventHandler().handle(
             new PeriodicSchedulerStatusEvent(nodeId, containerMemoryStatuses));
+
 
     //check if periodic scheduler got the containers
     List<ContainerId> checkContainers = this.rmContext.getPeriodicResourceScheduler().getContainersToSqueezed();

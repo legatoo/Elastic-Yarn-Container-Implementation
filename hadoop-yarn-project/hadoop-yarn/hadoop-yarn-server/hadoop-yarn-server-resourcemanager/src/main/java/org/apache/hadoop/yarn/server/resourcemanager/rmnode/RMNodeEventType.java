@@ -46,6 +46,6 @@ public enum RMNodeEventType {
   // Source: NMLivelinessMonitor
   EXPIRE,
 
-  // Source: ResourceTrackerService or a extra scheduler
-  CONTAINER_SQUEEZE
+  // Source: Periodic scheduler
+  NODE_SQUEEZE
 }
