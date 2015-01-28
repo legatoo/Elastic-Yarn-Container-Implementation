@@ -4,9 +4,7 @@ package org.apache.hadoop.yarn.server.resourcemanager.periodicservice;
  * Created by steven on 1/20/15.
  */
 
-import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.server.api.protocolrecords.NodeHeartbeatResponse;
-
+import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
 import java.util.List;
 
 /**
@@ -15,8 +13,10 @@ import java.util.List;
  * 3. Send CONTAINER_SQUEEZE event to RM's Dispacther
  */
 public interface PeriodicResourceScheduler  {
-    public List<ContainerId> getContainersToSqueezed();
+    public List<ContainerSqueezeUnit> getContainersToSqueezed();
 
-    public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response);
+    public void dispatchSqueezeEvent();
+
+//    public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response);
 
 }

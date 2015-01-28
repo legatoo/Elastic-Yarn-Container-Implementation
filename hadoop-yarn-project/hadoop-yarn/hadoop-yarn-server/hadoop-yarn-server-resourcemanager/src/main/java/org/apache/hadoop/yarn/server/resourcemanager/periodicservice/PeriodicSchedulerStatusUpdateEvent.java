@@ -8,10 +8,10 @@ import java.util.List;
 /**
  * Created by steven on 1/20/15.
  */
-public class PeriodicSchedulerStatusEvent extends PeriodicSchedulerEvent {
+public class PeriodicSchedulerStatusUpdateEvent extends PeriodicSchedulerEvent {
     private final List<ContainerMemoryStatus> containerMemoryStatuses;
 
-    public PeriodicSchedulerStatusEvent(NodeId nodeId, List<ContainerMemoryStatus> containerMemoryStatuses) {
+    public PeriodicSchedulerStatusUpdateEvent(NodeId nodeId, List<ContainerMemoryStatus> containerMemoryStatuses) {
         super(nodeId, PeriodicSchedulerEventType.MEMORY_STATUSES_UPDATE);
         this.containerMemoryStatuses = containerMemoryStatuses;
     }

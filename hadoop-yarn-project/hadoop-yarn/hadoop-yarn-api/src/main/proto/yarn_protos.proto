@@ -415,6 +415,7 @@ message ContainerMemoryStatusProto{
   optional ContainerIdProto container_id = 1;
   optional double virtual_mem_usage = 2 [default = -1.0];
   optional double physical_mem_usage = 3 [default = -1.0];
+  optional ResourceProto origin_resource = 4;
 }
 
 enum ContainerExitStatusProto {

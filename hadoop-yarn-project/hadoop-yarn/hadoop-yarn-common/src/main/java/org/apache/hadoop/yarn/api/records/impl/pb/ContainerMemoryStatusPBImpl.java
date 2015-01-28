@@ -4,6 +4,8 @@ import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.classification.InterfaceStability.Unstable;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
+import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.proto.YarnProtos;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerIdProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusProtoOrBuilder;
@@ -58,8 +60,10 @@ public class ContainerMemoryStatusPBImpl extends ContainerMemoryStatus {
         StringBuilder sb = new StringBuilder();
         sb.append("ContainerMemoryStatus: [");
         sb.append("ContainerId: ").append(getContainerId()).append(", ");
-        sb.append("VirtualMemory: ").append(getVirtualMemUsage()).append(", ");
-        sb.append("PhysicalMemory: ").append(getPhysicalMemUsage()).append(" ");
+        sb.append("Virtual Memory: ").append(getVirtualMemUsage()).append(" of ");
+        sb.append(getOriginResource().getMemory()*2.1).append(", ");
+        sb.append("Physical Memory: ").append(getPhysicalMemUsage()).append(" of ");
+        sb.append(getOriginResource().getMemory());
         sb.append("]");
         return sb.toString();
     }
@@ -130,11 +134,31 @@ public class ContainerMemoryStatusPBImpl extends ContainerMemoryStatus {
         return (p.getPhysicalMemUsage());
     }
 
+    @Override
+    public void setOriginResource(Resource origin) {
+        maybeInitBuilder();
+        builder.setOriginResource(convertToProtoFormat(origin));
+    }
+
+    @Override
+    public Resource getOriginResource() {
+        YarnProtos.ContainerMemoryStatusProtoOrBuilder p = viaProto ? proto : builder;
+        return convertFromProtoFormat(p.getOriginResource());
+    }
+
     private ContainerIdPBImpl convertFromProtoFormat(ContainerIdProto p) {
         return new ContainerIdPBImpl(p);
     }
 
     private ContainerIdProto convertToProtoFormat(ContainerId t) {
         return ((ContainerIdPBImpl)t).getProto();
+    }
+
+    private YarnProtos.ResourceProto convertToProtoFormat (Resource r) {
+        return ((ResourcePBImpl) r).getProto();
+    }
+
+    private ResourcePBImpl convertFromProtoFormat (YarnProtos.ResourceProto p) {
+        return new ResourcePBImpl(p);
     }
 }

@@ -19,11 +19,7 @@
 package org.apache.hadoop.yarn.server.api.protocolrecords.impl.pb;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ContainerId;
@@ -312,7 +308,7 @@ public class NodeHeartbeatResponsePBImpl extends
 
   @Override
   public void addAllContainersToBeSqueezed(
-          List<ContainerSqueezeUnit> containersToBeSqueezed) {
+          Collection<ContainerSqueezeUnit> containersToBeSqueezed) {
     if (containersToBeSqueezed == null)
       return;
     initContainersToBeSqueezed();

@@ -19,6 +19,7 @@
 package org.apache.hadoop.yarn.server.api.protocolrecords;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -50,7 +51,7 @@ public interface NodeHeartbeatResponse {
   void setNMTokenMasterKey(MasterKey secretKey);
 
   void addAllContainersToCleanup(List<ContainerId> containers);
-  void addAllContainersToBeSqueezed(List<ContainerSqueezeUnit> containers);
+  void addAllContainersToBeSqueezed(Collection<ContainerSqueezeUnit> containers);
 
 
   // This tells NM to remove finished containers from its context. Currently, NM

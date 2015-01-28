@@ -18,12 +18,8 @@
 
 package org.apache.hadoop.yarn.server.resourcemanager.rmnode;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -316,7 +312,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
 
     @Override
     public void setIfSqueeze(boolean flag) {
-        ifSqueeze.compareAndSet(true, flag);
+        ifSqueeze.set(flag);
     }
 
     public void setHealthReport(String healthReport) {
@@ -422,8 +418,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         try {
             // RMNode will clear the information about containersToClean etc. at the end
             // of heart beat
-            response.addAllContainersToBeSqueezed(
-                    new ArrayList<ContainerSqueezeUnit>());
+            response.addAllContainersToBeSqueezed(containersToBeSqueezed);
             this.containersToBeSqueezed.clear();
         } finally {
             this.writeLock.unlock();
@@ -441,6 +436,10 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         } finally {
             this.readLock.unlock();
         }
+    }
+
+    public static <T> T[] arrayBuilder(Class<T> ContainerSqueezeUnit, Collection c) {
+        return (T[]) c.toArray((T[]) Array.newInstance(ContainerSqueezeUnit.class, 0));
     }
 
     public void handle(RMNodeEvent event) {
@@ -668,8 +667,10 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         @Override
         public void transition(RMNodeImpl rmNode, RMNodeEvent event) {
             rmNode.containersToBeSqueezed.addAll(((RMNodeSqueezeEvent) event).getContainersToBeSqueeze());
+
             if (rmNode.ifSqueeze.compareAndSet(false, true)) {
                 LOG.debug("Set RMNode squeeze flag to " + rmNode.ifSqueeze.get());
+                rmNode.containersToBeSqueezed.clear();
             }
         }
     }

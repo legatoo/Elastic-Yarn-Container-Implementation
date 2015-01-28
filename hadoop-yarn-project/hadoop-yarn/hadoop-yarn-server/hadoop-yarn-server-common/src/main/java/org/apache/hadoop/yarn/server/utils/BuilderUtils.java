@@ -183,14 +183,27 @@ public class BuilderUtils {
   }
 
   public static ContainerMemoryStatus newContainerMemoryStatus(
-          ContainerId containerId, double virtualMemUsage, double physicalMemUsage){
+          ContainerId containerId, double virtualMemUsage, double physicalMemUsage,
+          Resource origin){
       ContainerMemoryStatus containerMemoryStatus = recordFactory
               .newRecordInstance(ContainerMemoryStatus.class);
       containerMemoryStatus.setContainerId(containerId);
       containerMemoryStatus.setVirtualMemUsage(virtualMemUsage);
       containerMemoryStatus.setPhysicalMemUsage(physicalMemUsage);
+      containerMemoryStatus.setOriginResource(origin);
       return containerMemoryStatus;
   }
+
+    public static ContainerSqueezeUnit newContainerSqueezeUnit(
+            ContainerId containerId, Resource origin, Resource target){
+        ContainerSqueezeUnit containerSqueezeUnit = recordFactory
+                .newRecordInstance(ContainerSqueezeUnit.class);
+        containerSqueezeUnit.setContainerId(containerId);
+        containerSqueezeUnit.setOrigin(origin);
+        containerSqueezeUnit.setTarget(target);
+        return containerSqueezeUnit;
+    }
+
   public static Container newContainer(ContainerId containerId, NodeId nodeId,
       String nodeHttpAddress, Resource resource, Priority priority,
       Token containerToken) {

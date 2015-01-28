@@ -49,7 +49,7 @@ import org.apache.hadoop.yarn.server.api.protocolrecords.RegisterNodeManagerResp
 import org.apache.hadoop.yarn.server.api.records.MasterKey;
 import org.apache.hadoop.yarn.server.api.records.NodeAction;
 import org.apache.hadoop.yarn.server.api.records.NodeStatus;
-import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerStatusEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerStatusUpdateEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.attempt.RMAppAttempt;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.attempt.event.RMAppAttemptContainerFinishedEvent;
@@ -360,25 +360,22 @@ public class ResourceTrackerService extends AbstractService implements
 
     // Receive container memory usage from Node Manager
     List<ContainerMemoryStatus> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
+//
+//    if( !containerMemoryStatuses.isEmpty()) {
+//        LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
+//        for (ContainerMemoryStatus status : containerMemoryStatuses) {
+//            ContainerId containerId = status.getContainerId();
+//            double vMemUsageRatio = status.getVirtualMemUsage();
+//            double pMemUsageRatio = status.getPhysicalMemUsage();
+//            LOG.debug("Container Memory Status: [ ContainerId: " + containerId +
+//                    ", Virtual memory usage: " + vMemUsageRatio + ", Physical memory usage: " + pMemUsageRatio
+//                    + ", ]");
+//
+//        }
+//    }else{
+//        LOG.debug("Receive 0 container memory usage from NM");
+//    }
 
-    if( !containerMemoryStatuses.isEmpty()) {
-        LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
-        for (ContainerMemoryStatus status : containerMemoryStatuses) {
-            ContainerId containerId = status.getContainerId();
-            double vMemUsageRatio = status.getVirtualMemUsage();
-            double pMemUsageRatio = status.getPhysicalMemUsage();
-            LOG.debug("Container Memory Status: [ ContainerId: " + containerId +
-                    ", Virtual memory usage: " + vMemUsageRatio + ", Physical memory usage: " + pMemUsageRatio
-                    + ", ]");
-
-        }
-    }else{
-        LOG.debug("Receive 0 container memory usage from NM");
-    }
-
-//    // add containerMemoryStatuses to periodicResourceSchedulerService
-//    this.rmContext.getPeriodicResourceSchedulerService().collectContainerMemoryStatusesFromNMs(
-//            containerMemoryStatuses, nodeId);
 
     // 1. Check if it's a registered node
     RMNode rmNode = this.rmContext.getRMNodes().get(nodeId);
@@ -459,15 +456,15 @@ public class ResourceTrackerService extends AbstractService implements
 
     //5. Send container memory statuses to periodic scheduler
     this.rmContext.getDispatcher().getEventHandler().handle(
-            new PeriodicSchedulerStatusEvent(nodeId, containerMemoryStatuses));
+            new PeriodicSchedulerStatusUpdateEvent(nodeId, containerMemoryStatuses));
 
 
     //check if periodic scheduler got the containers
-    List<ContainerId> checkContainers = this.rmContext.getPeriodicResourceScheduler().getContainersToSqueezed();
+    List<ContainerSqueezeUnit> checkContainers = this.rmContext.getPeriodicResourceScheduler().getContainersToSqueezed();
     if (checkContainers.isEmpty()) {
         LOG.debug("Periodic scheduler have no contaienrs information.");
     } else {
-        for (ContainerId id : checkContainers){
+        for (ContainerSqueezeUnit id : checkContainers){
             LOG.debug("Periodic Scheduler got: " + id);
         }
     }

@@ -166,6 +166,11 @@ public class ResourceManager extends CompositeService implements Recoverable {
   private WebApp webApp;
   private AppReportFetcher fetcher = null;
   protected ResourceTrackerService resourceTracker;
+
+  /**
+   * service to periodically revoke resource from containers whose
+   * resource usage ratio is low
+   */
   protected PeriodicResourceSchedulerImpl periodicResourceScheduler;
 
   @VisibleForTesting

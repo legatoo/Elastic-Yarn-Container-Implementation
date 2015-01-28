@@ -614,6 +614,14 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
             response = resourceTracker.nodeHeartbeat(request);
             //get next heartbeat interval from response
             nextHeartBeatInterval = response.getNextHeartBeatInterval();
+
+            // TODO: check containers to be squeeze from RM response,
+            // TODO: and do the corresponding operation
+            List<ContainerSqueezeUnit> containersToBeSqueeze =  response.getContainersToBeSqueezed();
+            for (ContainerSqueezeUnit c : containersToBeSqueeze){
+              LOG.debug("Receive from RM Periodic Scheculer " + c);
+            }
+
             updateMasterKeys(response);
 
             //check flag value
