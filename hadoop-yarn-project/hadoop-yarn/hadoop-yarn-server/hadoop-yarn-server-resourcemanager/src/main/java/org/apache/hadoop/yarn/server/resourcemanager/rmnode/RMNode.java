@@ -129,6 +129,8 @@ public interface RMNode {
 
   public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response);
 
+  public void cleanContainersToBeSqueezed();
+
   public NodeHeartbeatResponse getLastNodeHeartBeatResponse();
   
   /**

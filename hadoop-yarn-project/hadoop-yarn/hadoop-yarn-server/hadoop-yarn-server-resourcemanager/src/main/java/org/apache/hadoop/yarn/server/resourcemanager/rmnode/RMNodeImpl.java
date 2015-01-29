@@ -670,7 +670,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
 
             if (rmNode.ifSqueeze.compareAndSet(false, true)) {
                 LOG.debug("Set RMNode squeeze flag to " + rmNode.ifSqueeze.get());
-                rmNode.containersToBeSqueezed.clear();
+//                rmNode.containersToBeSqueezed.clear();
             }
         }
     }
@@ -910,5 +910,15 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
             return CommonNodeLabelsManager.EMPTY_STRING_SET;
         }
         return context.getNodeLabelManager().getLabelsOnNode(nodeId);
+    }
+
+    @Override
+    public void cleanContainersToBeSqueezed() {
+        synchronized (this.containersToBeSqueezed) {
+            if (!this.containersToBeSqueezed.isEmpty()){
+                this.containersToBeSqueezed.clear();
+            }
+        }
+
     }
 }

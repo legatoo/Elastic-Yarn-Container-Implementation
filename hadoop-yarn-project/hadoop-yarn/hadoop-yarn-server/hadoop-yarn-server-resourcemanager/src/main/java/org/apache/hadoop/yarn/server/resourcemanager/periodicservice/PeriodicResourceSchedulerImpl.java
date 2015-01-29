@@ -62,20 +62,25 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
     private AtomicBoolean operating = new AtomicBoolean(true);
 
     // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
-    public List<ContainerSqueezeUnit> pickContainers() {
-        List<ContainerSqueezeUnit> containersToBeSqueezed = new ArrayList<ContainerSqueezeUnit>();
+    public Collection<ContainerSqueezeUnit> pickContainers() {
+        Set<ContainerSqueezeUnit> containersToBeSqueezed = new HashSet<ContainerSqueezeUnit>();
 
         synchronized (runningContainerMemoryStatus) {
-            for (Iterator<ContainerMemoryStatus> iter = runningContainerMemoryStatus.iterator(); iter.hasNext(); ) {
-                ContainerMemoryStatus containerMemoryStatus = iter.next();
+            // Ordered traverse
+
+            // simply return all non-master containers for testing
+            while (!runningContainerMemoryStatus.isEmpty()) {
+                ContainerMemoryStatus cms = runningContainerMemoryStatus.poll();
+                LOG.debug("Periodic scheduler is picking container to be squeeze: " + cms);
                 // generate memory squeeze unit
-                Resource origin = containerMemoryStatus.getOriginResource();
-                Resource target = BuilderUtils.newResource(origin.getMemory() / 2, 4);
+                Resource origin = cms.getOriginResource();
+                Resource target = BuilderUtils.newResource(origin.getMemory() / 2, 1);
                 containersToBeSqueezed.add(BuilderUtils.newContainerSqueezeUnit(
-                        containerMemoryStatus.getContainerId(),
+                        cms.getContainerId(),
                         origin, target
                 ));
             }
+
         }
 
         return containersToBeSqueezed;
@@ -104,20 +109,17 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
         super.serviceStop();
     }
 
-    /**
-     * only for testing
-     * @return
-     */
-    @Override
-    public List<ContainerSqueezeUnit> getContainersToSqueezed() {
-        List<ContainerSqueezeUnit> containers = pickContainers();
-        return containers;
-    }
 
     @Override
     public void dispatchSqueezeEvent() {
-        LOG.debug("send squeeze event to nodes.");
-        List<ContainerSqueezeUnit> containers = pickContainers();
+        List<ContainerSqueezeUnit> containers = new ArrayList<ContainerSqueezeUnit>();
+        containers.addAll(pickContainers());
+
+        if (containers.isEmpty()) {
+            LOG.debug("No containers to be squeeze.");
+            return;
+        }
+
         Map<NodeId, List<ContainerSqueezeUnit>> containersToBeSqueezed =
                 new HashMap<NodeId, List<ContainerSqueezeUnit>>();
 
@@ -126,13 +128,24 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
         for (ContainerSqueezeUnit c : containers){
 //            RMNode rmNode = context.getRMNodes().get(containerIdToNodeId.get(c.getContainerId()));
             NodeId nodeId = containerIdToNodeId.get(c.getContainerId());
-            containersToBeSqueezed.put(nodeId, new ArrayList<ContainerSqueezeUnit>());
-            containersToBeSqueezed.get(nodeId).add(c);
+
+            if (containersToBeSqueezed.containsKey(nodeId)) {
+                containersToBeSqueezed.get(nodeId).add(c);
+            } else {
+                containersToBeSqueezed.put(nodeId, new ArrayList<ContainerSqueezeUnit>());
+                containersToBeSqueezed.get(nodeId).add(c);
+            }
+
         }
 
-        for (Map.Entry<NodeId, List<ContainerSqueezeUnit>> c : containersToBeSqueezed.entrySet()){
+
+        for (Iterator<Map.Entry<NodeId, List<ContainerSqueezeUnit>>> it =
+                containersToBeSqueezed.entrySet().iterator(); it.hasNext();){
+
+            Map.Entry<NodeId, List<ContainerSqueezeUnit>> entry = it.next();
+            LOG.debug("Sending " + entry.getValue().size() + " squeeze requests to node " + entry.getKey());
             context.getDispatcher().getEventHandler().handle(
-                    new RMNodeSqueezeEvent(c.getKey(), c.getValue())
+                    new RMNodeSqueezeEvent(entry.getKey(), entry.getValue())
             );
         }
     }
@@ -145,11 +158,8 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
             if (containerMemoryStatuses.isEmpty()) {
                 LOG.debug("No container memory status from " + nodeId);
             } else {
-
-                for (ContainerMemoryStatus c : containerMemoryStatuses) {
-                    updateStatuses(c);
-                    containerIdToNodeId.put(c.getContainerId(), nodeId);
-                }
+                // update container memory usages
+                updateStatuses(containerMemoryStatuses, nodeId);
             }
         } else {
             LOG.debug("Unrecognized event :" + event);
@@ -157,16 +167,27 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
     }
 
-    private void updateStatuses(ContainerMemoryStatus containerMemoryStatus) {
-        assert (containerMemoryStatus != null);
+    private void updateStatuses(List<ContainerMemoryStatus> containerMemoryStatuses, NodeId nodeId) {
+        assert (containerMemoryStatuses != null);
 
         synchronized (runningContainerMemoryStatus) {
-            if (runningContainerMemoryStatus.contains(containerMemoryStatus)) {
-                runningContainerMemoryStatus.remove(containerMemoryStatus);
+            for (ContainerMemoryStatus containerMemoryStatus : containerMemoryStatuses) {
+                if (runningContainerMemoryStatus.contains(containerMemoryStatus)) {
+                    LOG.debug("Updating memory usage of container  " + containerMemoryStatus.getContainerId());
+                    runningContainerMemoryStatus.remove(containerMemoryStatus);
+                }
+
+                runningContainerMemoryStatus.add(containerMemoryStatus);
+                containerIdToNodeId.put(containerMemoryStatus.getContainerId(), nodeId);
             }
 
-            runningContainerMemoryStatus.add(containerMemoryStatus);
+            LOG.debug(runningContainerMemoryStatus.size() + " of containers in PQ.");
+//            for (ContainerMemoryStatus c :runningContainerMemoryStatus){
+//                LOG.debug("Got memory status from heart beat " + c);
+//            }
         }
+
+
 
     }
 
@@ -185,7 +206,6 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
                 while( true) {
                     try {
                         // send squeeze event periodically
-                        LOG.debug("Sending squeeze event to node");
                         dispatchSqueezeEvent();
 
                     } catch (Throwable e) {
@@ -193,6 +213,7 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
                     } finally {
                         synchronized (timerMonitor) {
                             try {
+                                // for testing, send in every 10 seconds
                                 timerMonitor.wait(YarnConfiguration.DEFAULT_PS_SQUEEZE_INTERVAL_MS);
                             } catch (InterruptedException e) {
                                 // Do Nothing

@@ -56,6 +56,7 @@ public class ContainerSqueezeUnitPBImpl extends ContainerSqueezeUnit {
     }
 
     public synchronized ContainerSqueezeUnitProto getProto() {
+        mergeLocalToProto();
         proto = viaProto ? proto : builder.build();
         viaProto = true;
         return proto;
@@ -87,7 +88,7 @@ public class ContainerSqueezeUnitPBImpl extends ContainerSqueezeUnit {
     @Override
     public void setTarget(Resource target) {
         maybeInitBuilder();
-        builder.setOrigin(convertToProtoFormat(target));
+        builder.setTarget(convertToProtoFormat(target));
     }
 
     @Override

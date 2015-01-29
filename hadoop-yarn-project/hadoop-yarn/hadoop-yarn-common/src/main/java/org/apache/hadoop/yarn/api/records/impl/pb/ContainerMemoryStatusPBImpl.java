@@ -41,29 +41,13 @@ public class ContainerMemoryStatusPBImpl extends ContainerMemoryStatus {
     }
 
     @Override
-    public int hashCode() {
-        return getProto().hashCode();
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (other == null)
-            return false;
-        if (other.getClass().isAssignableFrom(this.getClass())) {
-            return this.getProto().equals(this.getClass().cast(other).getProto());
-        }
-        return false;
-    }
-
-    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("ContainerMemoryStatus: [");
         sb.append("ContainerId: ").append(getContainerId()).append(", ");
-        sb.append("Virtual Memory: ").append(getVirtualMemUsage()).append(" of ");
-        sb.append(getOriginResource().getMemory()*2.1).append(", ");
-        sb.append("Physical Memory: ").append(getPhysicalMemUsage()).append(" of ");
-        sb.append(getOriginResource().getMemory());
+        sb.append("Virtual Memory Ratio: ").append(getVirtualMemUsage()).append(", ");
+        sb.append("Physical Memory Ratio: ").append(getPhysicalMemUsage()).append(", ");
+        sb.append("Original Resource: ").append(getOriginResource().getMemory());
         sb.append("]");
         return sb.toString();
     }

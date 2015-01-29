@@ -122,6 +122,11 @@ public class MockNodes {
     }
 
     @Override
+    public void cleanContainersToBeSqueezed() {
+
+    }
+
+    @Override
     public AtomicBoolean getIfSqueeze() {
       return null;
     }

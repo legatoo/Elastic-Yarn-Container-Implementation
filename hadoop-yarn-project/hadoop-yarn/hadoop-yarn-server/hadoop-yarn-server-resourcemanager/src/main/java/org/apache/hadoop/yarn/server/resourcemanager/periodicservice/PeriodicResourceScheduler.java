@@ -13,7 +13,7 @@ import java.util.List;
  * 3. Send CONTAINER_SQUEEZE event to RM's Dispacther
  */
 public interface PeriodicResourceScheduler  {
-    public List<ContainerSqueezeUnit> getContainersToSqueezed();
+//    public List<ContainerSqueezeUnit> getContainersToSqueezed();
 
     public void dispatchSqueezeEvent();
 

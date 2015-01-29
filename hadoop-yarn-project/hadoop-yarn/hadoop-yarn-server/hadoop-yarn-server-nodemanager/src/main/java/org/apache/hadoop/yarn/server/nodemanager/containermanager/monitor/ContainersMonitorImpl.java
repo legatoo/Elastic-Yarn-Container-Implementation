@@ -480,8 +480,9 @@ public class ContainersMonitorImpl extends AbstractService implements
                                     LOG.debug("Adding status to list");
                                     LOG.debug("ContainerId: " + containerId +
                                             ", Virtual memory usage: " + curMemUsageOfAgedProcesses + " out of " + vmemLimit +
-                                            ", Physical memoty usage: " + curRssMemUsageOfAgedProcesses + "out of " + pmemLimit);
+                                            ", Physical memoty usage: " + curRssMemUsageOfAgedProcesses + " out of " + pmemLimit);
 
+                                    // since the script I am using is very slow, Here '*100' is for displying purpose
                                     double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses * 100)) / vmemLimit;
                                     double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses * 100)) / pmemLimit;
 
@@ -495,6 +496,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                                     LOG.debug("vMemUsageRatio: " + vMemUsageRatio + ", pMemUsageRatio: " + pMemUsageRatio);
                                     //memory limit in MB
                                     Resource origin = context.getContainers().get(containerId).getResource();
+                                    int originR = (int)pmemLimit / (1024*1024);
+
 
                                     ContainerMemoryStatus newContainerMemoryStatus =
                                             BuilderUtils.newContainerMemoryStatus(
@@ -631,9 +634,7 @@ public class ContainersMonitorImpl extends AbstractService implements
                 returnContainerMemStatuses.add(containerMemStatus);
             }
         }
-//      if(!returnContainerMemStatuses.isEmpty()){
-//          LOG.debug("Step #1 , size is "+ returnContainerMemStatuses.size());
-//      }
+
         return returnContainerMemStatuses;
     }
 }

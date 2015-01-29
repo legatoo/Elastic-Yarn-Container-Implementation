@@ -59,8 +59,7 @@ public abstract class ContainerMemoryStatus {
 
     @Override
     public int hashCode() {
-        int result =  getContainerId().hashCode();
-        return result;
+        return getContainerId().hashCode();
     }
 
     //container memory status is distinguished by containerID
@@ -73,6 +72,7 @@ public abstract class ContainerMemoryStatus {
         if (getClass() != obj.getClass())
             return false;
         ContainerMemoryStatus other = (ContainerMemoryStatus) obj;
+
         if (!this.getContainerId().equals(other.getContainerId()))
             return false;
         return true;
@@ -97,9 +97,4 @@ public abstract class ContainerMemoryStatus {
 //                return 0;
 //        }
 //    }
-
-    @Override
-    public String toString() {
-        return super.toString();
-    }
 }
