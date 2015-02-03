@@ -21,5 +21,8 @@ package org.apache.hadoop.yarn.server.nodemanager.containermanager.container;
 public enum ContainerState {
   NEW, LOCALIZING, LOCALIZATION_FAILED, LOCALIZED, RUNNING, EXITED_WITH_SUCCESS,
   EXITED_WITH_FAILURE, KILLING, CONTAINER_CLEANEDUP_AFTER_KILL,
-  CONTAINER_RESOURCES_CLEANINGUP, DONE
+  CONTAINER_RESOURCES_CLEANINGUP, DONE,
+
+    // new state for squeezing
+     SQUEEZED
 }

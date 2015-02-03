@@ -31,16 +31,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.util.StringUtils.TraditionalBinaryPrefix;
-import org.apache.hadoop.yarn.api.records.ContainerExitStatus;
-import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerMemoryStatus;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.event.AsyncDispatcher;
 import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.server.nodemanager.ContainerExecutor;
 import org.apache.hadoop.yarn.server.nodemanager.Context;
-import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerKillEvent;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.*;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.yarn.util.ResourceCalculatorPlugin;
@@ -357,7 +354,9 @@ public class ContainersMonitorImpl extends AbstractService implements
                 synchronized (containersToBeRemoved) {
                     for (ContainerId containerId : containersToBeRemoved) {
                         trackingContainers.remove(containerId);
+                        containerMemoryStatuseses.remove(containerId);
                         LOG.info("Stopping resource-monitoring for " + containerId);
+
                     }
                     containersToBeRemoved.clear();
                 }
@@ -473,37 +472,45 @@ public class ContainersMonitorImpl extends AbstractService implements
                             pmemStillInUsage += currentPmemUsage;
 
                             // container 0 is not allowed to be squeezed
+                            // Only RUNNING container is considered
                             if (!containerId.toString()
                                     .substring(Math.max(containerId.toString().length() - 2, 0))
                                     .equals("01")) {
-                                synchronized (containerMemoryStatuseses) {
-                                    LOG.debug("Adding status to list");
-                                    LOG.debug("ContainerId: " + containerId +
-                                            ", Virtual memory usage: " + curMemUsageOfAgedProcesses + " out of " + vmemLimit +
-                                            ", Physical memoty usage: " + curRssMemUsageOfAgedProcesses + " out of " + pmemLimit);
 
-                                    // since the script I am using is very slow, Here '*100' is for displying purpose
-                                    double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses * 100)) / vmemLimit;
-                                    double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses * 100)) / pmemLimit;
+                                if (context.getContainers().get(containerId).getContainerState()
+                                        .equals(org.apache.hadoop.yarn.server.nodemanager.containermanager.container
+                                        .ContainerState.RUNNING)) {
 
-                                    //set memory usage precision
-                                    DecimalFormat vMemUsage = new DecimalFormat("#.###");
-                                    DecimalFormat pMemUsage = new DecimalFormat("#.###");
+                                    synchronized (containerMemoryStatuseses) {
+                                        LOG.debug("hakunami: " + context.getContainers().get(containerId).getContainerState());
+                                        LOG.debug("Adding status to list");
+                                        LOG.debug("ContainerId: " + containerId +
+                                                ", Virtual memory usage: " + curMemUsageOfAgedProcesses + " out of " + vmemLimit +
+                                                ", Physical memoty usage: " + curRssMemUsageOfAgedProcesses + " out of " + pmemLimit);
 
-                                    vMemUsageRatio = Double.valueOf(vMemUsage.format(vMemUsageRatio));
-                                    pMemUsageRatio = Double.valueOf(pMemUsage.format(pMemUsageRatio));
+                                        // since the script I am using is very slow, Here '*100' is for displying purpose
+                                        double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses * 100)) / vmemLimit;
+                                        double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses * 100)) / pmemLimit;
 
-                                    LOG.debug("vMemUsageRatio: " + vMemUsageRatio + ", pMemUsageRatio: " + pMemUsageRatio);
-                                    //memory limit in MB
-                                    Resource origin = context.getContainers().get(containerId).getResource();
-                                    int originR = (int)pmemLimit / (1024*1024);
+                                        //set memory usage precision
+                                        DecimalFormat vMemUsage = new DecimalFormat("#.###");
+                                        DecimalFormat pMemUsage = new DecimalFormat("#.###");
+
+                                        vMemUsageRatio = Double.valueOf(vMemUsage.format(vMemUsageRatio));
+                                        pMemUsageRatio = Double.valueOf(pMemUsage.format(pMemUsageRatio));
+
+                                        LOG.debug("vMemUsageRatio: " + vMemUsageRatio + ", pMemUsageRatio: " + pMemUsageRatio);
+                                        //memory limit in MB
+                                        Resource origin = context.getContainers().get(containerId).getResource();
+                                        int originR = (int) pmemLimit / (1024 * 1024);
 
 
-                                    ContainerMemoryStatus newContainerMemoryStatus =
-                                            BuilderUtils.newContainerMemoryStatus(
-                                                    containerId, vMemUsageRatio, pMemUsageRatio, origin);
+                                        ContainerMemoryStatus newContainerMemoryStatus =
+                                                BuilderUtils.newContainerMemoryStatus(
+                                                        containerId, vMemUsageRatio, pMemUsageRatio, origin);
 
-                                    containerMemoryStatuseses.put(containerId, newContainerMemoryStatus);
+                                        containerMemoryStatuseses.put(containerId, newContainerMemoryStatus);
+                                    }
                                 }
                             }
                         }

@@ -362,21 +362,22 @@ public class ResourceTrackerService extends AbstractService implements
 
         // Receive container memory usage from Node Manager
         List<ContainerMemoryStatus> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
-//
-//    if( !containerMemoryStatuses.isEmpty()) {
-//        LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
-//        for (ContainerMemoryStatus status : containerMemoryStatuses) {
-//            ContainerId containerId = status.getContainerId();
-//            double vMemUsageRatio = status.getVirtualMemUsage();
-//            double pMemUsageRatio = status.getPhysicalMemUsage();
-//            LOG.debug("Container Memory Status: [ ContainerId: " + containerId +
-//                    ", Virtual memory usage: " + vMemUsageRatio + ", Physical memory usage: " + pMemUsageRatio
-//                    + ", ]");
-//
-//        }
-//    }else{
-//        LOG.debug("Receive 0 container memory usage from NM");
-//    }
+
+        if( !containerMemoryStatuses.isEmpty()) {
+            LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
+            for (ContainerMemoryStatus status : containerMemoryStatuses) {
+                ContainerId containerId = status.getContainerId();
+                double vMemUsageRatio = status.getVirtualMemUsage();
+                double pMemUsageRatio = status.getPhysicalMemUsage();
+                LOG.debug("hakunami" +
+                        ": [ ContainerId: " + containerId +
+                        ", Virtual memory usage: " + vMemUsageRatio + ", Physical memory usage: " + pMemUsageRatio
+                        + ", ]");
+
+            }
+        }else{
+            LOG.debug("Receive 0 container memory usage from NM");
+        }
 
 
         // 1. Check if it's a registered node
