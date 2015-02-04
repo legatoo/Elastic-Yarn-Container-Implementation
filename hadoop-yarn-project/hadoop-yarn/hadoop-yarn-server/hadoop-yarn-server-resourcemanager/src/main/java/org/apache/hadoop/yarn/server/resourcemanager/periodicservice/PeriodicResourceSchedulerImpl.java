@@ -40,6 +40,7 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
 
     private final RMContext context;
+    private final double threshold;
     private Configuration configuration;
 
     private Runnable squeezeOperateRunnable;
@@ -55,13 +56,20 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
     public PeriodicResourceSchedulerImpl(RMContext context) {
         super(PeriodicResourceSchedulerImpl.class.getName());
         this.context = context;
+        this.threshold = 0.7;
+    }
+
+    public PeriodicResourceSchedulerImpl(RMContext context, double threshold){
+        super(PeriodicResourceSchedulerImpl.class.getName());
+        this.context = context;
+        this.threshold = threshold;
     }
 
     // when operating node squeeze, stop receive heartbeat information
     // set to true for testing purpose
     private AtomicBoolean operating = new AtomicBoolean(true);
 
-    // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
+
     public Collection<ContainerSqueezeUnit> pickContainers() {
         Set<ContainerSqueezeUnit> containersToBeSqueezed = new HashSet<ContainerSqueezeUnit>();
 
@@ -69,15 +77,26 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
             // Ordered traverse
 
             // simply return all non-master containers for testing
+            // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
             while (!runningContainerMemoryStatus.isEmpty()) {
                 ContainerMemoryStatus cms = runningContainerMemoryStatus.poll();
                 LOG.debug("Periodic scheduler is picking container to be squeeze: " + cms);
                 // generate memory squeeze unit
-                Resource origin = cms.getOriginResource();
-                Resource target = BuilderUtils.newResource(origin.getMemory() / 2, 1);
+//                Resource origin = cms.getOriginResource();
+//                Resource target = BuilderUtils.newResource(origin.getMemory() / 2, 1);
+
+                // Resource above threshold is available to squeeze
+                Resource diff = BuilderUtils.newResource(
+                        (int)((double)cms.getOriginResource().getMemory() * this.threshold),
+                        1);
+//                containersToBeSqueezed.add(BuilderUtils.newContainerSqueezeUnit(
+//                        cms.getContainerId(),
+//                        origin, target
+//                ));
+
                 containersToBeSqueezed.add(BuilderUtils.newContainerSqueezeUnit(
                         cms.getContainerId(),
-                        origin, target
+                        diff
                 ));
             }
 

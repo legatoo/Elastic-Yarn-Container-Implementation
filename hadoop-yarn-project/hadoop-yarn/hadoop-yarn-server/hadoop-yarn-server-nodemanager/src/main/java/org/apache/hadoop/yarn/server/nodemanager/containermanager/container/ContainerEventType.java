@@ -39,5 +39,8 @@ public enum ContainerEventType {
     CONTAINER_KILLED_ON_REQUEST,
 
     //Squeeze container
-    CONTAINER_SQUEEZE
+    CONTAINER_SQUEEZE,
+
+    //Container recover
+    CONTAINER_STRETCH
 }

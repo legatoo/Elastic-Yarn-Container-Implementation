@@ -142,4 +142,13 @@ public class MockContainer implements Container {
     return null;
   }
 
+    @Override
+    public Resource getMaxResource() {
+        return null;
+    }
+
+    @Override
+    public Resource getMinResource() {
+        return null;
+    }
 }

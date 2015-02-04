@@ -250,23 +250,28 @@ public class ContainerImpl implements Container {
 
                     // TODO: add transition from SQUEEZE to RUNNING
 
-//                    // From SQUEEZED State
-//                    .addTransition(ContainerState.SQUEEZED,
-//                            ContainerState.EXITED_WITH_SUCCESS,
-//                            ContainerEventType.CONTAINER_EXITED_WITH_SUCCESS,
-//                            new ExitedWithSuccessTransition(true))
-//                    .addTransition(ContainerState.SQUEEZED,
-//                            ContainerState.EXITED_WITH_FAILURE,
-//                            ContainerEventType.CONTAINER_EXITED_WITH_FAILURE,
-//                            new ExitedWithFailureTransition(true))
-//                    .addTransition(ContainerState.SQUEEZED, ContainerState.SQUEEZED,
-//                            ContainerEventType.UPDATE_DIAGNOSTICS_MSG,
-//                            UPDATE_DIAGNOSTICS_TRANSITION)
-//                    .addTransition(ContainerState.SQUEEZED, ContainerState.KILLING,
-//                            ContainerEventType.KILL_CONTAINER, new KillTransition())
-//                    .addTransition(ContainerState.SQUEEZED, ContainerState.EXITED_WITH_FAILURE,
-//                            ContainerEventType.CONTAINER_KILLED_ON_REQUEST,
-//                            new KilledExternallyTransition())
+                    // From SQUEEZED State
+                    .addTransition(ContainerState.SQUEEZED,
+                            ContainerState.EXITED_WITH_SUCCESS,
+                            ContainerEventType.CONTAINER_EXITED_WITH_SUCCESS,
+                            new ExitedWithSuccessTransition(true))
+                    .addTransition(ContainerState.SQUEEZED,
+                            ContainerState.EXITED_WITH_FAILURE,
+                            ContainerEventType.CONTAINER_EXITED_WITH_FAILURE,
+                            new ExitedWithFailureTransition(true))
+                    .addTransition(ContainerState.SQUEEZED, ContainerState.SQUEEZED,
+                            ContainerEventType.UPDATE_DIAGNOSTICS_MSG,
+                            UPDATE_DIAGNOSTICS_TRANSITION)
+                    .addTransition(ContainerState.SQUEEZED, ContainerState.KILLING,
+                            ContainerEventType.KILL_CONTAINER, new KillTransition())
+                    .addTransition(ContainerState.SQUEEZED, ContainerState.EXITED_WITH_FAILURE,
+                            ContainerEventType.CONTAINER_KILLED_ON_REQUEST,
+                            new KilledExternallyTransition())
+
+//                    // new transation for recovery
+//                    .addTransition(ContainerState.SQUEEZED, ContainerState.RUNNING,
+//                            ContainerEventType.CONTAINER_STRETCH,
+//                            new SqueezeRecoverTransition())
 
                     // From CONTAINER_EXITED_WITH_SUCCESS State
                     .addTransition(ContainerState.EXITED_WITH_SUCCESS, ContainerState.DONE,
@@ -375,6 +380,8 @@ public class ContainerImpl implements Container {
             case KILLING:
             case CONTAINER_CLEANEDUP_AFTER_KILL:
             case CONTAINER_RESOURCES_CLEANINGUP:
+                return org.apache.hadoop.yarn.api.records.ContainerState.RUNNING;
+            case SQUEEZED:
                 return org.apache.hadoop.yarn.api.records.ContainerState.RUNNING;
             case DONE:
             default:
@@ -566,6 +573,7 @@ public class ContainerImpl implements Container {
                 new ContainerStartMonitoringEvent(containerId,
                         vmemBytes, pmemBytes));
     }
+
 
     private void addDiagnostics(String... diags) {
         for (String s : diags) {
@@ -810,14 +818,19 @@ public class ContainerImpl implements Container {
     static class SqueezeContainerTransition extends ContainerTransition {
 
 
-        public SqueezeContainerTransition() {
-        }
+        public SqueezeContainerTransition() {}
 
         @Override
         public void transition(ContainerImpl container, ContainerEvent event) {
+
+            // TODO: should inform monitor to add this container into thresholdAlert list
+
+
             LOG.debug("Transition from RUNNING to SQUEEZE " + container + " " + event);
             ContainerSqueezeUnit containerSqueezeUnit = ((ContainerSqueezeEvent)event)
                     .getSqueezeInfo();
+
+            // ContainerSqueezer will take care of this event
             container.dispatcher.getEventHandler().handle(
                     new ContainerSqueezerEvent(containerSqueezeUnit,
                             ContainerSqueezerEventType.CONTAINER_SQUEEZE));
@@ -1071,6 +1084,17 @@ public class ContainerImpl implements Container {
         } finally {
             this.readLock.unlock();
         }
+    }
+
+
+    @Override
+    public Resource getMaxResource() {
+        return this.resource;
+    }
+
+    @Override
+    public Resource getMinResource() {
+        return null;
     }
 
     private boolean hasDefaultExitCode() {

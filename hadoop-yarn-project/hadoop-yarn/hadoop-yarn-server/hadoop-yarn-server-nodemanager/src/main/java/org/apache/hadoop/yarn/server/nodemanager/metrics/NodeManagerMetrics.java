@@ -26,89 +26,118 @@ import org.apache.hadoop.metrics2.lib.MutableGaugeInt;
 import org.apache.hadoop.metrics2.source.JvmMetrics;
 import org.apache.hadoop.yarn.api.records.Resource;
 
-@Metrics(about="Metrics for node manager", context="yarn")
+@Metrics(about = "Metrics for node manager", context = "yarn")
 public class NodeManagerMetrics {
-  @Metric MutableCounterInt containersLaunched;
-  @Metric MutableCounterInt containersCompleted;
-  @Metric MutableCounterInt containersFailed;
-  @Metric MutableCounterInt containersKilled;
-  @Metric("# of initializing containers")
-      MutableGaugeInt containersIniting;
-  @Metric MutableGaugeInt containersRunning;
-  @Metric("Current allocated memory in GB")
-      MutableGaugeInt allocatedGB;
-  @Metric("Current # of allocated containers")
-      MutableGaugeInt allocatedContainers;
-  @Metric MutableGaugeInt availableGB;
-  @Metric("Current allocated Virtual Cores")
-      MutableGaugeInt allocatedVCores;
-  @Metric MutableGaugeInt availableVCores;
+    @Metric
+    MutableCounterInt containersLaunched;
+    @Metric
+    MutableCounterInt containersCompleted;
+    @Metric
+    MutableCounterInt containersFailed;
+    @Metric
+    MutableCounterInt containersKilled;
+    @Metric("# of initializing containers")
+    MutableGaugeInt containersIniting;
+    @Metric
+    MutableGaugeInt containersRunning;
+    @Metric("Current allocated memory in GB")
+    MutableGaugeInt allocatedGB;
+    @Metric("Current # of allocated containers")
+    MutableGaugeInt allocatedContainers;
+    @Metric
+    MutableGaugeInt availableGB;
+    @Metric("Current allocated Virtual Cores")
+    MutableGaugeInt allocatedVCores;
+    @Metric
+    MutableGaugeInt availableVCores;
 
-  public static NodeManagerMetrics create() {
-    return create(DefaultMetricsSystem.instance());
-  }
+    // For Squeeze Operation
+    @Metric
+    MutableGaugeInt squeezedContainers;
+    @Metric("Current squeezed memory in GB")
+    MutableGaugeInt squeezedGB;
 
-  static NodeManagerMetrics create(MetricsSystem ms) {
-    JvmMetrics.create("NodeManager", null, ms);
-    return ms.register(new NodeManagerMetrics());
-  }
 
-  // Potential instrumentation interface methods
+    public static NodeManagerMetrics create() {
+        return create(DefaultMetricsSystem.instance());
+    }
 
-  public void launchedContainer() {
-    containersLaunched.incr();
-  }
+    static NodeManagerMetrics create(MetricsSystem ms) {
+        JvmMetrics.create("NodeManager", null, ms);
+        return ms.register(new NodeManagerMetrics());
+    }
 
-  public void completedContainer() {
-    containersCompleted.incr();
-  }
+    // Potential instrumentation interface methods
 
-  public void failedContainer() {
-    containersFailed.incr();
-  }
+    public void launchedContainer() {
+        containersLaunched.incr();
+    }
 
-  public void killedContainer() {
-    containersKilled.incr();
-  }
+    public void completedContainer() {
+        containersCompleted.incr();
+    }
 
-  public void initingContainer() {
-    containersIniting.incr();
-  }
+    public void failedContainer() {
+        containersFailed.incr();
+    }
 
-  public void endInitingContainer() {
-    containersIniting.decr();
-  }
+    public void killedContainer() {
+        containersKilled.incr();
+    }
 
-  public void runningContainer() {
-    containersRunning.incr();
-  }
+    public void initingContainer() {
+        containersIniting.incr();
+    }
 
-  public void endRunningContainer() {
-    containersRunning.decr();
-  }
+    public void endInitingContainer() {
+        containersIniting.decr();
+    }
 
-  public void allocateContainer(Resource res) {
-    allocatedContainers.incr();
-    allocatedGB.incr(res.getMemory() / 1024);
-    availableGB.decr(res.getMemory() / 1024);
-    allocatedVCores.incr(res.getVirtualCores());
-    availableVCores.decr(res.getVirtualCores());
-  }
+    public void runningContainer() {
+        containersRunning.incr();
+    }
 
-  public void releaseContainer(Resource res) {
-    allocatedContainers.decr();
-    allocatedGB.decr(res.getMemory() / 1024);
-    availableGB.incr(res.getMemory() / 1024);
-    allocatedVCores.decr(res.getVirtualCores());
-    availableVCores.incr(res.getVirtualCores());
-  }
+    public void endRunningContainer() {
+        containersRunning.decr();
+    }
 
-  public void addResource(Resource res) {
-    availableGB.incr(res.getMemory() / 1024);
-    availableVCores.incr(res.getVirtualCores());
-  }
-  
-  public int getRunningContainers() {
-    return containersRunning.value();
-  }
+    // For squeeze operation
+    public void squeezedContainer() { squeezedContainers.incr();}
+
+    public void recoverSqueezedContainer() { squeezedContainers.decr(); }
+
+    public void allocateContainer(Resource res) {
+        allocatedContainers.incr();
+        allocatedGB.incr(res.getMemory() / 1024);
+        availableGB.decr(res.getMemory() / 1024);
+        allocatedVCores.incr(res.getVirtualCores());
+        availableVCores.decr(res.getVirtualCores());
+    }
+
+    public void releaseContainer(Resource res) {
+        allocatedContainers.decr();
+        allocatedGB.decr(res.getMemory() / 1024);
+        availableGB.incr(res.getMemory() / 1024);
+        allocatedVCores.decr(res.getVirtualCores());
+        availableVCores.incr(res.getVirtualCores());
+    }
+
+    public void addResource(Resource res) {
+        availableGB.incr(res.getMemory() / 1024);
+        availableVCores.incr(res.getVirtualCores());
+    }
+
+    public void squeezeContainer(Resource res) {
+        squeezedContainers.incr();
+        allocatedGB.incr( res.getMemory() / 1024);
+    }
+
+    public void recoverContainer(Resource res) {
+        squeezedContainers.decr();
+        allocatedGB.decr( res.getMemory() /1024);
+    }
+
+    public int getRunningContainers() {
+        return containersRunning.value();
+    }
 }

@@ -79,6 +79,18 @@ public class ContainerSqueezeUnitPBImpl extends ContainerSqueezeUnit {
     }
 
     @Override
+    public void setDiff(Resource diff) {
+        maybeInitBuilder();
+        builder.setDiff(convertToProtoFormat(diff));
+    }
+
+    @Override
+    public Resource getDiff() {
+        ContainerSqueezeUnitProtoOrBuilder p = viaProto ? proto : builder;
+        return convertFromProtoFormat(p.getDiff());
+    }
+
+    @Override
     public void setOrigin(Resource origin) {
         maybeInitBuilder();
         builder.setOrigin(convertToProtoFormat(origin));

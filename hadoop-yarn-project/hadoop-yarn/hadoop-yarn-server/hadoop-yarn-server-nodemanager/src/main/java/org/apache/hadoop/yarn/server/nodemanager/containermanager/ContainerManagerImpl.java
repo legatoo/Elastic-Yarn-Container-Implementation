@@ -197,6 +197,8 @@ public class ContainerManagerImpl extends CompositeService implements
         dispatcher.register(AuxServicesEventType.class, auxiliaryServices);
         dispatcher.register(ContainersMonitorEventType.class, containersMonitor);
         dispatcher.register(ContainersLauncherEventType.class, containersLauncher);
+
+        // regisdter ContainerSqueezer to CM dispatcher
         dispatcher.register(ContainerSqueezerEventType.class, containerSqueezer);
 
         addService(dispatcher);
@@ -1110,13 +1112,15 @@ public class ContainerManagerImpl extends CompositeService implements
                 }
                 break;
 
+            // New type of Container Managerment Event for Squeezing
             case SQUEEZE_CONTAINERS:
                 LOG.debug("In ContainerManagerImpl. Sending event: " + event + " to Container.");
                 CMgrSuqeezeEvent containerSqueezeEvent =
                         (CMgrSuqeezeEvent) event;
                 for (ContainerSqueezeUnit squeeze : containerSqueezeEvent
                         .getContainersToBeSqueezed()){
-                    LOG.debug("legato " + squeeze);
+                    // The event below will be toke by ContainerEventDispatcher
+                    // aka, ContainerImpl's handle function
                     this.dispatcher.getEventHandler().handle((
                             new ContainerSqueezeEvent(squeeze.getContainerId(),
                                     ContainerEventType.CONTAINER_SQUEEZE,

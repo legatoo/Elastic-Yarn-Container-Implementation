@@ -158,6 +158,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                     RMNodeEventType.RECONNECTED, new ReconnectNodeTransition())
             .addTransition(NodeState.RUNNING, NodeState.RUNNING,
                     RMNodeEventType.RESOURCE_UPDATE, new UpdateNodeResourceWhenRunningTransition())
+
+            // TODO: need add new State for Squeeze transition
             .addTransition(NodeState.RUNNING, NodeState.RUNNING,
                     RMNodeEventType.NODE_SQUEEZE, new OperateNodeSqueezeTransition())
 

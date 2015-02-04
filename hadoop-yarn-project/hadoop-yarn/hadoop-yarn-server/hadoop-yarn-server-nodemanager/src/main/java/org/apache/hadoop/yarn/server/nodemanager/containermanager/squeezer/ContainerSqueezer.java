@@ -42,7 +42,6 @@ public class ContainerSqueezer extends AbstractService
 
     @Override
     protected void serviceInit(Configuration conf) throws Exception {
-
         super.serviceInit(conf);
     }
 
@@ -56,6 +55,10 @@ public class ContainerSqueezer extends AbstractService
         ContainerSqueezeUnit containerSqueezeUnit = event.getContainerSqueezeUnit();
         Container container = context.getContainers().get(containerSqueezeUnit.getContainerId());
 
+//        ((ContainerManagerImpl)context.getContainerManager()).getContainersMonitor()
+//                .informMonitor(containerSqueezeUnit);
+
+        // Squeeze operation is HERE
         LOG.debug("HAHAHAHA " + event.getType());
 
 
