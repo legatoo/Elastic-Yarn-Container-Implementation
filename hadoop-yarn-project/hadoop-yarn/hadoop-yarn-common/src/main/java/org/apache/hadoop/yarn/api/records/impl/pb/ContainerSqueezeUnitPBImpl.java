@@ -49,8 +49,7 @@ public class ContainerSqueezeUnitPBImpl extends ContainerSqueezeUnit {
         StringBuilder sb = new StringBuilder();
         sb.append("ContainerSqueezeUnit: [");
         sb.append("ContainerId: ").append(getContainerId()).append(", ");
-        sb.append("Origin: ").append(getOrigin()).append(", ");
-        sb.append("Target: ").append(getTarget()).append(" ");
+        sb.append("Diff: ").append(getDiff()).append(" ");
         sb.append("]");
         return sb.toString();
     }

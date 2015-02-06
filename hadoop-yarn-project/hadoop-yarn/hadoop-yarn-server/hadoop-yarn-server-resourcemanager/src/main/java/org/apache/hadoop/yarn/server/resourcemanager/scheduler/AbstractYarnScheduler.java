@@ -514,6 +514,7 @@ public abstract class AbstractYarnScheduler
       // Log resource change
       LOG.warn("Update resource on node: " + node.getNodeName() 
           + " with the same resource: " + newResource);
+
     }
   }
 

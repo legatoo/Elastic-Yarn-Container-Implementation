@@ -53,6 +53,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.Loca
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.event.ContainerLocalizationCleanupEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.localizer.event.ContainerLocalizationRequestEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.event.LogHandlerContainerFinishedEvent;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerMonitorUpdateEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerStartMonitoringEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerStopMonitoringEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
@@ -547,6 +548,14 @@ public class ContainerImpl implements Container {
                 containerId, exitCode));
     }
 
+    @SuppressWarnings("unchecked")
+    private void sendContainerMonitorUpdateEvent(){
+        // Inform Container Monitor after squeeze operation
+        // This method assists Container Stretch feature
+        EventHandler eventHandler = dispatcher.getEventHandler();
+        eventHandler.handle( new ContainerMonitorUpdateEvent(containerId));
+    }
+
     @SuppressWarnings("unchecked") // dispatcher not typed
     private void sendLaunchEvent() {
         ContainersLauncherEventType launcherEvent =
@@ -822,20 +831,19 @@ public class ContainerImpl implements Container {
 
         @Override
         public void transition(ContainerImpl container, ContainerEvent event) {
-
-            // TODO: should inform monitor to add this container into thresholdAlert list
-
-
             LOG.debug("Transition from RUNNING to SQUEEZE " + container + " " + event);
+            // send event to container monitor
+            container.sendContainerMonitorUpdateEvent();
+            // update metrics information
+            container.metrics.addSqueezedContainer();
             ContainerSqueezeUnit containerSqueezeUnit = ((ContainerSqueezeEvent)event)
                     .getSqueezeInfo();
+            container.metrics.squeezeContainer(containerSqueezeUnit.getDiff());
 
             // ContainerSqueezer will take care of this event
             container.dispatcher.getEventHandler().handle(
                     new ContainerSqueezerEvent(containerSqueezeUnit,
                             ContainerSqueezerEventType.CONTAINER_SQUEEZE));
-
-            container.cleanup();
         }
     }
 

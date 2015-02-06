@@ -695,6 +695,7 @@ public class ResourceManager extends CompositeService implements Recoverable {
           }
 
           try {
+              // by default: capacity scheduler will handle this event
             scheduler.handle(event);
           } catch (Throwable t) {
             // An error occurred, but we are shutting down anyway.

@@ -137,6 +137,8 @@ public class ContainerManagerImpl extends CompositeService implements
     private Server server;
     private final ResourceLocalizationService rsrcLocalizationSrvc;
     private final ContainersLauncher containersLauncher;
+
+    // for container squeeze and stretch events
     private final ContainerSqueezer containerSqueezer;
     private final AuxServices auxiliaryServices;
     private final NodeManagerMetrics metrics;
@@ -347,6 +349,10 @@ public class ContainerManagerImpl extends CompositeService implements
 
     public ContainersMonitor getContainersMonitor() {
         return this.containersMonitor;
+    }
+
+    public ContainerSqueezer getContainersSqueezer() {
+        return this.containerSqueezer;
     }
 
     protected ResourceLocalizationService createResourceLocalizationService(
@@ -1115,8 +1121,8 @@ public class ContainerManagerImpl extends CompositeService implements
             // New type of Container Managerment Event for Squeezing
             case SQUEEZE_CONTAINERS:
                 LOG.debug("In ContainerManagerImpl. Sending event: " + event + " to Container.");
-                CMgrSuqeezeEvent containerSqueezeEvent =
-                        (CMgrSuqeezeEvent) event;
+                CMgrSuqeezeEvent containerSqueezeEvent = (CMgrSuqeezeEvent) event;
+
                 for (ContainerSqueezeUnit squeeze : containerSqueezeEvent
                         .getContainersToBeSqueezed()){
                     // The event below will be toke by ContainerEventDispatcher

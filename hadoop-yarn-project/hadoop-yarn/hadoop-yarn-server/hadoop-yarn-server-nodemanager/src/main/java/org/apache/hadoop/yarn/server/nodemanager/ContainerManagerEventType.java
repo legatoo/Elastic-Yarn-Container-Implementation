@@ -21,5 +21,6 @@ package org.apache.hadoop.yarn.server.nodemanager;
 public enum ContainerManagerEventType {
     FINISH_APPS,
     FINISH_CONTAINERS,
-    SQUEEZE_CONTAINERS
+    SQUEEZE_CONTAINERS,
+    STRETCH_CONTAINER
 }

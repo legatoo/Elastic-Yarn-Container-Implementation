@@ -16,30 +16,16 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.yarn.api.records;
+package org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor;
 
-import org.apache.hadoop.classification.InterfaceAudience.Public;
-import org.apache.hadoop.classification.InterfaceStability.Stable;
+import org.apache.hadoop.yarn.api.records.ContainerId;
 
-/**
- * <p>State of a <code>Container</code>.</p>
- */
-@Public
-@Stable
-public enum ContainerState {
-    /**
-     * New container
-     */
-    NEW,
+public class ContainerMonitorUpdateEvent extends ContainersMonitorEvent {
 
-    /**
-     * Running container
-     */
-    RUNNING,
+    public ContainerMonitorUpdateEvent(ContainerId containerId) {
+        super(containerId, ContainersMonitorEventType.UPDATE_MONITORING_CONTAINER);
 
-    /**
-     * Completed container
-     */
-    COMPLETE,
+    }
+
 
 }

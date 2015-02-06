@@ -14,6 +14,9 @@ import org.apache.hadoop.yarn.server.api.protocolrecords.NodeHeartbeatResponse;
 import org.apache.hadoop.yarn.server.resourcemanager.RMContext;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNode;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeSqueezeEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.scheduler.event.ContainerSqueezedSchedulerEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.scheduler.event.SchedulerEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.scheduler.event.SchedulerEventType;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.MemoryStatusComparator;
 
@@ -52,11 +55,12 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
             PriorityBlockingQueue<ContainerMemoryStatus>(20, comparator);
 
     private final Map<ContainerId, NodeId> containerIdToNodeId = new HashMap<ContainerId, NodeId>();
+    private final Map<ContainerId, ContainerSqueezeUnit> currentSqueezedContainers = new HashMap<ContainerId, ContainerSqueezeUnit>();
 
     public PeriodicResourceSchedulerImpl(RMContext context) {
         super(PeriodicResourceSchedulerImpl.class.getName());
         this.context = context;
-        this.threshold = 0.7;
+        this.threshold = 0.3;
     }
 
     public PeriodicResourceSchedulerImpl(RMContext context, double threshold){
@@ -80,6 +84,15 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
             // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
             while (!runningContainerMemoryStatus.isEmpty()) {
                 ContainerMemoryStatus cms = runningContainerMemoryStatus.poll();
+                ContainerId containerId = cms.getContainerId();
+                NodeId nodeId = containerIdToNodeId.get(containerId);
+
+                synchronized (currentSqueezedContainers){
+                    if( currentSqueezedContainers.containsKey(containerId)) {
+                            continue;
+                    }
+                 }
+
                 LOG.debug("Periodic scheduler is picking container to be squeeze: " + cms);
                 // generate memory squeeze unit
 //                Resource origin = cms.getOriginResource();
@@ -171,17 +184,32 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
     @Override
     public void handle(PeriodicSchedulerEvent event) {
-        if (event.getType() == PeriodicSchedulerEventType.MEMORY_STATUSES_UPDATE) {
-            NodeId nodeId = event.getNodeId();
-            List<ContainerMemoryStatus> containerMemoryStatuses = ((PeriodicSchedulerStatusUpdateEvent) event).getContainerMemoryStatuses();
-            if (containerMemoryStatuses.isEmpty()) {
-                LOG.debug("No container memory status from " + nodeId);
-            } else {
-                // update container memory usages
-                updateStatuses(containerMemoryStatuses, nodeId);
-            }
-        } else {
-            LOG.debug("Unrecognized event :" + event);
+        NodeId nodeId = event.getNodeId();
+        switch (event.getType()){
+            case MEMORY_STATUSES_UPDATE:
+                List<ContainerMemoryStatus> containerMemoryStatuses = ((PeriodicSchedulerStatusUpdateEvent) event).getContainerMemoryStatuses();
+                if (containerMemoryStatuses.isEmpty()) {
+                    LOG.debug("No container memory status from " + nodeId);
+                } else {
+                    // update container memory usages
+                    updateStatuses(containerMemoryStatuses, nodeId);
+                }
+                break;
+            case SQUEEZE_DONE:
+                List<ContainerSqueezeUnit> squeezedContainers = ((PeriodicSchedulerSqueezeDoneEvent) event).getSqueezedContainers();
+                updateSqueezedContainers(nodeId, squeezedContainers);
+
+                // TODO: send SchedulerEventType.CONTAINER_SQUEEZED to CS
+                // TODO: to update cluster resource
+
+                context.getDispatcher().getEventHandler().handle(
+                        new ContainerSqueezedSchedulerEvent(SchedulerEventType.CONTAINER_SQUEEZED,
+                                squeezedContainers, nodeId)
+                );
+                break;
+            default:
+                break;
+
         }
 
     }
@@ -191,13 +219,22 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
         synchronized (runningContainerMemoryStatus) {
             for (ContainerMemoryStatus containerMemoryStatus : containerMemoryStatuses) {
-                if (runningContainerMemoryStatus.contains(containerMemoryStatus)) {
-                    LOG.debug("Updating memory usage of container  " + containerMemoryStatus.getContainerId());
-                    runningContainerMemoryStatus.remove(containerMemoryStatus);
+
+                synchronized (currentSqueezedContainers) {
+                    if (currentSqueezedContainers.containsKey(containerMemoryStatus.getContainerId())) {
+                            continue;
+                    } else {
+                        if (runningContainerMemoryStatus.contains(containerMemoryStatus)) {
+                            LOG.debug("Updating memory usage of container  " + containerMemoryStatus.getContainerId());
+                            runningContainerMemoryStatus.remove(containerMemoryStatus);
+                        }
+
+                        runningContainerMemoryStatus.add(containerMemoryStatus);
+                        containerIdToNodeId.put(containerMemoryStatus.getContainerId(), nodeId);
+                    }
                 }
 
-                runningContainerMemoryStatus.add(containerMemoryStatus);
-                containerIdToNodeId.put(containerMemoryStatus.getContainerId(), nodeId);
+
             }
 
             LOG.debug(runningContainerMemoryStatus.size() + " of containers in PQ.");
@@ -205,9 +242,19 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 //                LOG.debug("Got memory status from heart beat " + c);
 //            }
         }
+    }
 
-
-
+    private void updateSqueezedContainers(NodeId nodeId,
+                                          List<ContainerSqueezeUnit> squeezedContainers){
+        if (squeezedContainers.isEmpty())
+            return ;
+        synchronized (currentSqueezedContainers){
+            LOG.debug("Update squeezed containers information in RM");
+            for (ContainerSqueezeUnit csu : squeezedContainers){
+                LOG.debug("Container: " + csu);
+                currentSqueezedContainers.put(csu.getContainerId(), csu);
+            }
+        }
     }
 
     public AtomicBoolean getOperating() {

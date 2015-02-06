@@ -436,10 +436,6 @@ public class NodeManager extends CompositeService
             return systemCredentials;
         }
 
-        @Override
-        public List<ContainerMemoryStatus> getCotainerMemoryStatuses() {
-            return null;
-        }
 
         public void setSystemCrendentialsForApps(
                 Map<ApplicationId, Credentials> systemCredentials) {

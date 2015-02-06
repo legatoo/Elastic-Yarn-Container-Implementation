@@ -6,5 +6,7 @@ package org.apache.hadoop.yarn.server.resourcemanager.periodicservice;
 public enum PeriodicSchedulerEventType {
     MEMORY_STATUSES_UPDATE,
 
-    OPERATE_PERIODIC_SCHEDULE;
+    OPERATE_PERIODIC_SCHEDULE,
+
+    SQUEEZE_DONE
 }

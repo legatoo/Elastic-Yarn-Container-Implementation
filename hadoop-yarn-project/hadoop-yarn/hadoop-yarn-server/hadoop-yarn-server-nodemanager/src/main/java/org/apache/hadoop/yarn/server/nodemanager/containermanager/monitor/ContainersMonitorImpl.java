@@ -38,6 +38,7 @@ import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.server.nodemanager.ContainerExecutor;
 import org.apache.hadoop.yarn.server.nodemanager.Context;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.*;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.yarn.util.ResourceCalculatorPlugin;
@@ -54,6 +55,7 @@ public class ContainersMonitorImpl extends AbstractService implements
     private MonitoringThread monitoringThread;
 
     final List<ContainerId> containersToBeRemoved;
+    final List<ContainerId> containersAreSqueezing;
     final Map<ContainerId, ProcessTreeInfo> containersToBeAdded;
     Map<ContainerId, ProcessTreeInfo> trackingContainers =
             new HashMap<ContainerId, ProcessTreeInfo>();
@@ -88,6 +90,7 @@ public class ContainersMonitorImpl extends AbstractService implements
 
         this.containersToBeAdded = new HashMap<ContainerId, ProcessTreeInfo>();
         this.containersToBeRemoved = new ArrayList<ContainerId>();
+        this.containersAreSqueezing = new ArrayList<ContainerId>();
         this.monitoringThread = new MonitoringThread();
     }
 
@@ -361,6 +364,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                     containersToBeRemoved.clear();
                 }
 
+                //TODO: add squeezed containers threshold monitor
+
                 // Now do the monitoring for the trackingContainers
                 // Check memory usage and kill any overflowing containers
                 long vmemStillInUsage = 0;
@@ -614,6 +619,13 @@ public class ContainersMonitorImpl extends AbstractService implements
             case STOP_MONITORING_CONTAINER:
                 synchronized (this.containersToBeRemoved) {
                     this.containersToBeRemoved.add(containerId);
+                }
+                break;
+            case UPDATE_MONITORING_CONTAINER:
+
+                synchronized (this.containersAreSqueezing){
+                    this.containersAreSqueezing.add(containerId);
+                    LOG.debug("Add threshold monitor for container: " + containerId);
                 }
                 break;
             default:

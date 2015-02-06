@@ -49,10 +49,12 @@ import org.apache.hadoop.yarn.server.api.protocolrecords.RegisterNodeManagerResp
 import org.apache.hadoop.yarn.server.api.records.MasterKey;
 import org.apache.hadoop.yarn.server.api.records.NodeAction;
 import org.apache.hadoop.yarn.server.api.records.NodeStatus;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerSqueezeDoneEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerStatusUpdateEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.attempt.RMAppAttempt;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.attempt.event.RMAppAttemptContainerFinishedEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.rmcontainer.RMContainer;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNode;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeEventType;
@@ -360,6 +362,8 @@ public class ResourceTrackerService extends AbstractService implements
 
         NodeId nodeId = remoteNodeStatus.getNodeId();
 
+
+
         // Receive container memory usage from Node Manager
         List<ContainerMemoryStatus> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
 
@@ -377,6 +381,19 @@ public class ResourceTrackerService extends AbstractService implements
             }
         }else{
             LOG.debug("Receive 0 container memory usage from NM");
+        }
+
+        List<ContainerSqueezeUnit> squeezedContainers = remoteNodeStatus.getSqueezedContainers();
+        if (!squeezedContainers.isEmpty()){
+            for (ContainerSqueezeUnit c : squeezedContainers){
+                LOG.debug("Container " + c + " has finished squeeze operation.");
+            }
+
+            this.rmContext.getDispatcher().getEventHandler().handle(
+                    new PeriodicSchedulerSqueezeDoneEvent(nodeId, squeezedContainers));
+
+        } else {
+            LOG.debug("No container is squeezed from NM side.");
         }
 
 
@@ -430,6 +447,7 @@ public class ResourceTrackerService extends AbstractService implements
         Resource available = ((CapacityScheduler) rmContext.getScheduler()).getSchedulerNode(nodeId).getAvailableResource();
         LOG.debug("In heartbeat " + lastNodeHeartbeatResponse + " available resource is "
                 + available );
+
         // Heartbeat response
         NodeHeartbeatResponse nodeHeartBeatResponse = YarnServerBuilderUtils
                 .newNodeHeartbeatResponse(lastNodeHeartbeatResponse.

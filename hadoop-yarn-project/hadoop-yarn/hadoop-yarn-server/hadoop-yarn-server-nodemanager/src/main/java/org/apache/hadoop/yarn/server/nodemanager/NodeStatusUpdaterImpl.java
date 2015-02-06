@@ -347,10 +347,21 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
         //TODO: call container monitor from context
         List<ContainerMemoryStatus> containerMemoryStatuses = getContainerMemoryStatuses();
 
+        boolean ifSqueeze = ((ContainerManagerImpl) context.getContainerManager())
+                .getContainersSqueezer().getIfSqueeze();
+        List<ContainerSqueezeUnit> squeezedContainers = new ArrayList<ContainerSqueezeUnit>();
+        if (ifSqueeze){
+            squeezedContainers.addAll( ((ContainerManagerImpl) context.getContainerManager())
+                    .getContainersSqueezer().getCurrentSqueezedContainers());
+
+            ((ContainerManagerImpl) context.getContainerManager())
+                    .getContainersSqueezer().setIfSqueeze(false);
+        }
 
         NodeStatus nodeStatus =
                 NodeStatus.newInstance(nodeId, responseId, containersStatuses,
-                        createKeepAliveApplicationList(), nodeHealthStatus, containerMemoryStatuses);
+                        createKeepAliveApplicationList(), nodeHealthStatus,
+                        containerMemoryStatuses, squeezedContainers);
 
         return nodeStatus;
     }
@@ -595,6 +606,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                         NodeStatus nodeStatus = getNodeStatus(lastHeartBeatID);
 
                         LOG.debug(nodeStatus);
+
 
                         NodeHeartbeatRequest request =
                                 NodeHeartbeatRequest.newInstance(nodeStatus,

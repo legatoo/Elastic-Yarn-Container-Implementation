@@ -22,6 +22,7 @@ import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MutableCounterInt;
+import org.apache.hadoop.metrics2.lib.MutableGaugeDouble;
 import org.apache.hadoop.metrics2.lib.MutableGaugeInt;
 import org.apache.hadoop.metrics2.source.JvmMetrics;
 import org.apache.hadoop.yarn.api.records.Resource;
@@ -40,12 +41,14 @@ public class NodeManagerMetrics {
     MutableGaugeInt containersIniting;
     @Metric
     MutableGaugeInt containersRunning;
-    @Metric("Current allocated memory in GB")
-    MutableGaugeInt allocatedGB;
     @Metric("Current # of allocated containers")
     MutableGaugeInt allocatedContainers;
-    @Metric
+
+    @Metric("Current available memory in GB")
     MutableGaugeInt availableGB;
+    @Metric("Current allocated memory in GB")
+    MutableGaugeInt allocatedGB;
+
     @Metric("Current allocated Virtual Cores")
     MutableGaugeInt allocatedVCores;
     @Metric
@@ -102,7 +105,7 @@ public class NodeManagerMetrics {
     }
 
     // For squeeze operation
-    public void squeezedContainer() { squeezedContainers.incr();}
+    public void addSqueezedContainer() { squeezedContainers.incr();}
 
     public void recoverSqueezedContainer() { squeezedContainers.decr(); }
 
@@ -129,7 +132,9 @@ public class NodeManagerMetrics {
 
     public void squeezeContainer(Resource res) {
         squeezedContainers.incr();
-        allocatedGB.incr( res.getMemory() / 1024);
+        squeezedGB.incr(res.getMemory() / 1024);
+        allocatedGB.decr( res.getMemory() / 1024);
+        availableGB.incr( res.getMemory() / 1024);
     }
 
     public void recoverContainer(Resource res) {
