@@ -62,6 +62,7 @@ message ContainerSqueezeUnitProto {
     optional ResourceProto origin = 2;
     optional ResourceProto target = 3;
     optional ResourceProto diff = 4;
+    optional int64 priotity = 5;
 }
 
 message ResourceProto {

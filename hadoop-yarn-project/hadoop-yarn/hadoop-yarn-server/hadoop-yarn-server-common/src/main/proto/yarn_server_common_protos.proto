@@ -40,7 +40,7 @@ message NodeStatusProto {
     repeated ContainerStatusProto containersStatuses = 3;
     optional NodeHealthStatusProto nodeHealthStatus = 4;
     repeated ApplicationIdProto keep_alive_applications = 5;
-    repeated ContainerMemoryStatusProto containerMemoryStatuses = 6;
+    repeated ContainerSqueezeUnitProto containerMemoryStatuses = 6;
     repeated ContainerSqueezeUnitProto squeezedContainers = 7;
 }
 

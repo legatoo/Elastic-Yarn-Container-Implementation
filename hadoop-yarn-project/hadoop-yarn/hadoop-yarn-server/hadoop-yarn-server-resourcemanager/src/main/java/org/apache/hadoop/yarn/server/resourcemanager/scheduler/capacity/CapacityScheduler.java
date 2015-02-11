@@ -1084,10 +1084,14 @@ public class CapacityScheduler extends
                 ContainerSqueezedSchedulerEvent containerSqueezedSchedulerEvent =
                         (ContainerSqueezedSchedulerEvent)event;
                 NodeId nodeId = containerSqueezedSchedulerEvent.getNodeId();
-                List<ContainerSqueezeUnit> containerAreSqueezed = containerSqueezedSchedulerEvent.getContainersAreSqueezed();
+                List<ContainerSqueezeUnit> containerAreSqueezed = containerSqueezedSchedulerEvent
+                        .getContainersAreSqueezed();
 
                 // should update corresponding RMNode
-                updateAfterSqueeze(nodeId, containerAreSqueezed);
+                //updateAfterSqueeze(nodeId, containerAreSqueezed);
+                for (ContainerSqueezeUnit containerSqueezeUnit : containerAreSqueezed){
+                    squeezedContainer(containerSqueezeUnit, RMContainerEventType.SQUEEZE);
+                }
 
                 break;
             default:
@@ -1160,13 +1164,50 @@ public class CapacityScheduler extends
                 " clusterResource: " + clusterResource);
     }
 
+//    @Lock(CapacityScheduler.class)
+//    protected synchronized void updateAfterSqueeze(NodeId nodeId, List<ContainerSqueezeUnit> containers){
+//        // update resource of each node here
+//        SchedulerNode schedulerNode = getSchedulerNode(nodeId);
+//        schedulerNode.updateResourceAfterSqueeze(containers);
+//
+//
+//    }
+
     @Lock(CapacityScheduler.class)
-    protected synchronized void updateAfterSqueeze(NodeId nodeId, List<ContainerSqueezeUnit> containers){
-        // update resource of each node here
-        SchedulerNode schedulerNode = getSchedulerNode(nodeId);
-        schedulerNode.updateResourceAfterSqueeze(containers);
+    // squeeze up a running container
+    protected void squeezedContainer(ContainerSqueezeUnit containerSqueezeUnit,
+           RMContainerEventType event){
+        if (containerSqueezeUnit == null){
+            LOG.info("No need to update cluster resource since container squeeze unit is null");
+            return;
+        }
+
+        RMContainer rmContainer = getRMContainer(containerSqueezeUnit.getContainerId());
+        if (rmContainer == null){
+            LOG.info("rmContainer is null");
+            return;
+        }
+
+        Container container = rmContainer.getContainer();
+
+        // Get the node on which the container was allocated
+        FiCaSchedulerNode node = getNode(container.getNodeId());
+
+        // Get the application for the finished container
+        FiCaSchedulerApp application =
+                getCurrentAttemptForContainer(container.getId());
+
+        // Inform the queue
+        LeafQueue queue = (LeafQueue) application.getQueue();
+        queue.squeezeContainer(clusterResource, node, application,
+                rmContainer, containerSqueezeUnit, event);
+
+        LOG.info("Application attempt " + application.getApplicationAttemptId()
+                + " squeezed container " + container.getId() + " on node: " + node
+                + " with event: " + event);
 
     }
+
 
     @Lock(CapacityScheduler.class)
     @Override

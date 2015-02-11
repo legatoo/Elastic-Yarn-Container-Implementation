@@ -28,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.classification.InterfaceStability.Unstable;
 import org.apache.hadoop.yarn.api.records.*;
+import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.resourcemanager.rmcontainer.RMContainer;
 import org.apache.hadoop.yarn.server.resourcemanager.rmcontainer.RMContainerState;
@@ -50,10 +51,15 @@ public abstract class SchedulerNode {
     private Resource totalResourceCapability;
     private RMContainer reservedContainer;
     private volatile int numContainers;
+    private volatile int numSqueezedContainers;
 
 
     /* set of containers that are allocated containers */
     private final Map<ContainerId, RMContainer> launchedContainers =
+            new HashMap<ContainerId, RMContainer>();
+
+    // TODO: squeezed containers
+    private final Map<ContainerId, RMContainer> squeezedContainers =
             new HashMap<ContainerId, RMContainer>();
 
     private final RMNode rmNode;
@@ -140,6 +146,21 @@ public abstract class SchedulerNode {
                 + ", which has " + numContainers + " containers, "
                 + getUsedResource() + " used and " + getAvailableResource()
                 + " available after allocation");
+    }
+
+    public synchronized void squeezeContainer(RMContainer rmContainer,
+               ContainerSqueezeUnit containerSqueezeUnit) {
+        // TODO: put rmContainer into squeezedContainers
+        squeezedContainers.put(containerSqueezeUnit.getContainerId(), rmContainer);
+        numSqueezedContainers++;
+        Resources.addTo(squeezedResource, containerSqueezeUnit.getDiff());
+
+        // TODO: add Resource of diff into available resource
+        addAvailableResource(containerSqueezeUnit.getDiff());
+
+        LOG.debug("Add squeeze diff " + containerSqueezeUnit.getDiff() + " from " +
+            containerSqueezeUnit.getContainerId() + " to node resource. ");
+        LOG.debug("Current resource is " + getAvailableResource());
     }
 
     /**

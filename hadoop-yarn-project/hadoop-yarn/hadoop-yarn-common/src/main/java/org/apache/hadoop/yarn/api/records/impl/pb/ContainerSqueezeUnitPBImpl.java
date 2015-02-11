@@ -50,6 +50,7 @@ public class ContainerSqueezeUnitPBImpl extends ContainerSqueezeUnit {
         sb.append("ContainerSqueezeUnit: [");
         sb.append("ContainerId: ").append(getContainerId()).append(", ");
         sb.append("Diff: ").append(getDiff()).append(" ");
+        sb.append("Priority: ").append(getPriority()).append(" ");
         sb.append("]");
         return sb.toString();
     }
@@ -125,6 +126,18 @@ public class ContainerSqueezeUnitPBImpl extends ContainerSqueezeUnit {
     public Resource getTarget() {
         ContainerSqueezeUnitProtoOrBuilder p = viaProto ? proto : builder;
         return convertFromProtoFormat(p.getTarget());
+    }
+
+    @Override
+    public long getPriority() {
+        ContainerSqueezeUnitProtoOrBuilder p = viaProto ? proto : builder;
+        return p.getPriotity();
+    }
+
+    @Override
+    public void setPriority(int priority) {
+        maybeInitBuilder();
+        builder.setPriotity(priority);
     }
 
     private ContainerIdPBImpl convertFromProtoFormat(ContainerIdProto p) {

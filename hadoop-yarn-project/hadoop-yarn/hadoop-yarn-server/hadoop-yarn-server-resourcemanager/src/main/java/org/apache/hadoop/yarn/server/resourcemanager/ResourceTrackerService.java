@@ -62,6 +62,7 @@ import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeImpl;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeReconnectEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeStartedEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.rmnode.RMNodeStatusEvent;
+import org.apache.hadoop.yarn.server.resourcemanager.scheduler.SchedulerNode;
 import org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler;
 import org.apache.hadoop.yarn.server.resourcemanager.security.NMTokenSecretManagerInRM;
 import org.apache.hadoop.yarn.server.resourcemanager.security.RMContainerTokenSecretManager;
@@ -365,17 +366,17 @@ public class ResourceTrackerService extends AbstractService implements
 
 
         // Receive container memory usage from Node Manager
-        List<ContainerMemoryStatus> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
+        List<ContainerSqueezeUnit> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
 
         if( !containerMemoryStatuses.isEmpty()) {
             LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
-            for (ContainerMemoryStatus status : containerMemoryStatuses) {
+            for (ContainerSqueezeUnit status : containerMemoryStatuses) {
                 ContainerId containerId = status.getContainerId();
-                double vMemUsageRatio = status.getVirtualMemUsage();
-                double pMemUsageRatio = status.getPhysicalMemUsage();
+//                double vMemUsageRatio = status.getVirtualMemUsage();
+//                double pMemUsageRatio = status.getPhysicalMemUsage();
                 LOG.debug("hakunami" +
                         ": [ ContainerId: " + containerId +
-                        ", Virtual memory usage: " + vMemUsageRatio + ", Physical memory usage: " + pMemUsageRatio
+                        ", Diff: " + status.getDiff() + ", Priority: " + status.getPriority()
                         + ", ]");
 
             }
@@ -445,7 +446,8 @@ public class ResourceTrackerService extends AbstractService implements
         }
 
         Resource available = ((CapacityScheduler) rmContext.getScheduler()).getSchedulerNode(nodeId).getAvailableResource();
-        LOG.debug("In heartbeat " + lastNodeHeartbeatResponse + " available resource is "
+        LOG.debug("In heartbeat " + lastNodeHeartbeatResponse +
+                " available resource in node " + nodeId +"is "
                 + available );
 
         // Heartbeat response

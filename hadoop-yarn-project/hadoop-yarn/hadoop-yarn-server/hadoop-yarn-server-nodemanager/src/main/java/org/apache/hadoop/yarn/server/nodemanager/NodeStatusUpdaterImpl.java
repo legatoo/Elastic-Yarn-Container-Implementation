@@ -345,14 +345,15 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
         List<ContainerStatus> containersStatuses = getContainerStatuses();
 
         //TODO: call container monitor from context
-        List<ContainerMemoryStatus> containerMemoryStatuses = getContainerMemoryStatuses();
+        List<ContainerSqueezeUnit> containerMemoryStatuses = getContainerMemoryStatuses();
+
 
         boolean ifSqueeze = ((ContainerManagerImpl) context.getContainerManager())
                 .getContainersSqueezer().getIfSqueeze();
         List<ContainerSqueezeUnit> squeezedContainers = new ArrayList<ContainerSqueezeUnit>();
         if (ifSqueeze){
             squeezedContainers.addAll( ((ContainerManagerImpl) context.getContainerManager())
-                    .getContainersSqueezer().getCurrentSqueezedContainers());
+                    .getContainersSqueezer().getSqueezedContainersInThisRound());
 
             ((ContainerManagerImpl) context.getContainerManager())
                     .getContainersSqueezer().setIfSqueeze(false);
@@ -404,9 +405,9 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
 
 
     @VisibleForTesting
-    protected List<ContainerMemoryStatus> getContainerMemoryStatuses() throws IOException {
-        List<ContainerMemoryStatus> containerMemoryStatuses = ((ContainerManagerImpl) context.getContainerManager())
-                .getContainersMonitor().getContainerMemoryStatuses();
+    protected List<ContainerSqueezeUnit> getContainerMemoryStatuses() throws IOException {
+        List<ContainerSqueezeUnit> containerMemoryStatuses = ((ContainerManagerImpl) context.getContainerManager())
+                .getContainersMonitor().getContainerResourceUsageStatues();
 //    for(ContainerMemoryStatus cms: containerMemoryStatuses){
 //      LOG.debug("ContainerMemoryStatus: " + cms);
 //    }

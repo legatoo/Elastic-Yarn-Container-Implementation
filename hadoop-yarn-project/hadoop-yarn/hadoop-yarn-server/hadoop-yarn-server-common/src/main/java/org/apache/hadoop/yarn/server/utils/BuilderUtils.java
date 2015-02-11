@@ -204,11 +204,12 @@ public class BuilderUtils {
     }
 
     public static ContainerSqueezeUnit newContainerSqueezeUnit(
-            ContainerId containerId, Resource diff) {
+            ContainerId containerId, Resource diff, int priority) {
         ContainerSqueezeUnit containerSqueezeUnit = recordFactory
                 .newRecordInstance(ContainerSqueezeUnit.class);
         containerSqueezeUnit.setContainerId(containerId);
         containerSqueezeUnit.setDiff(diff);
+        containerSqueezeUnit.setPriority(priority);
         return containerSqueezeUnit;
     }
 

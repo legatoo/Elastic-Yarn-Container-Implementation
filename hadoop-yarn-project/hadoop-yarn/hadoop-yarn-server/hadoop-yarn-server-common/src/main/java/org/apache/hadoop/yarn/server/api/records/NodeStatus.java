@@ -29,7 +29,7 @@ public abstract class NodeStatus {
                                          List<ContainerStatus> containerStatuses,
                                          List<ApplicationId> keepAliveApplications,
                                          NodeHealthStatus nodeHealthStatus,
-                                         List<ContainerMemoryStatus> containerMemoryStatuses,
+                                         List<ContainerSqueezeUnit> containerMemoryStatuses,
                                          List<ContainerSqueezeUnit> squeezedContainers) {
         NodeStatus nodeStatus = Records.newRecord(NodeStatus.class);
         nodeStatus.setResponseId(responseId);
@@ -64,10 +64,10 @@ public abstract class NodeStatus {
     public abstract void setResponseId(int responseId);
 
     public abstract void setContainerMemoryStatuses(
-            List<ContainerMemoryStatus> containerMemoryStatuses);
+            List<ContainerSqueezeUnit> containerMemoryStatuses);
 
 
-    public abstract List<ContainerMemoryStatus> getContainerMemoryStatuses();
+    public abstract List<ContainerSqueezeUnit> getContainerMemoryStatuses();
 
     public abstract void setSqueezedContainers(
             List<ContainerSqueezeUnit> squeezedContainers);

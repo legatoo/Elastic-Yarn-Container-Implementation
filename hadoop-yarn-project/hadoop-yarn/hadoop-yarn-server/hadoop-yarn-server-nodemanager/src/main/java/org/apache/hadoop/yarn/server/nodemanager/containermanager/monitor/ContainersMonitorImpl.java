@@ -62,6 +62,14 @@ public class ContainersMonitorImpl extends AbstractService implements
     final Map<ContainerId, ContainerMemoryStatus> containerMemoryStatuseses =
             new HashMap<ContainerId, ContainerMemoryStatus>();
 
+    // store container squeeze unit
+    final Map<ContainerId, ContainerSqueezeUnit> containerSqueezeUnitMap =
+            new HashMap<ContainerId, ContainerSqueezeUnit>();
+
+    // threshold for monitor to send resource revoke
+    final double threshold = 0.7;
+    final double squeezeThreshold = 0.2;
+
     final ContainerExecutor containerExecutor;
     private final Dispatcher eventDispatcher;
     private final Context context;
@@ -357,7 +365,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                 synchronized (containersToBeRemoved) {
                     for (ContainerId containerId : containersToBeRemoved) {
                         trackingContainers.remove(containerId);
-                        containerMemoryStatuseses.remove(containerId);
+                        //containerMemoryStatuseses.remove(containerId);
+                        containerSqueezeUnitMap.remove(containerId);
                         LOG.info("Stopping resource-monitoring for " + containerId);
 
                     }
@@ -465,9 +474,10 @@ public class ContainersMonitorImpl extends AbstractService implements
                             it.remove();
                             LOG.info("Removed ProcessTree with root " + pId);
 
-                            synchronized (containerMemoryStatuseses) {
+                            synchronized (containerSqueezeUnitMap) {
                                 LOG.debug("Removing over limit container from status list.");
-                                containerMemoryStatuseses.remove(containerId);
+                                //containerMemoryStatuseses.remove(containerId);
+                                containerSqueezeUnitMap.remove(containerId);
                             }
                         } else {
                             // Accounting the total memory in usage for all containers that
@@ -486,7 +496,10 @@ public class ContainersMonitorImpl extends AbstractService implements
                                         .equals(org.apache.hadoop.yarn.server.nodemanager.containermanager.container
                                         .ContainerState.RUNNING)) {
 
-                                    synchronized (containerMemoryStatuseses) {
+                                    synchronized (containerSqueezeUnitMap) {
+                                        Container container_test = context.getContainers().get(containerId);
+
+
                                         LOG.debug("hakunami: " + context.getContainers().get(containerId).getContainerState());
                                         LOG.debug("Adding status to list");
                                         LOG.debug("ContainerId: " + containerId +
@@ -505,16 +518,32 @@ public class ContainersMonitorImpl extends AbstractService implements
                                         pMemUsageRatio = Double.valueOf(pMemUsage.format(pMemUsageRatio));
 
                                         LOG.debug("vMemUsageRatio: " + vMemUsageRatio + ", pMemUsageRatio: " + pMemUsageRatio);
-                                        //memory limit in MB
-                                        Resource origin = context.getContainers().get(containerId).getResource();
-                                        int originR = (int) pmemLimit / (1024 * 1024);
 
 
-                                        ContainerMemoryStatus newContainerMemoryStatus =
-                                                BuilderUtils.newContainerMemoryStatus(
-                                                        containerId, vMemUsageRatio, pMemUsageRatio, origin);
+                                        // only squeeze the containers whoes usage is under warning threshold
+                                        if (vMemUsageRatio < threshold && pMemUsageRatio < threshold){
+                                            Resource origin = context.getContainers().get(containerId).getResource();
+                                            Resource diff = BuilderUtils.newResource(
+                                                    (int)((double)origin.getMemory() * squeezeThreshold),
+                                                    1);
+                                            long vMemLimitInMB = (int) vmemLimit/(1024*1024);
+                                            int priority = (int)((double)vMemLimitInMB * (threshold - vMemUsageRatio + squeezeThreshold));
+                                            ContainerSqueezeUnit containerSqueezeUnit =
+                                                    BuilderUtils.newContainerSqueezeUnit(containerId, diff, priority);
 
-                                        containerMemoryStatuseses.put(containerId, newContainerMemoryStatus);
+                                            containerSqueezeUnitMap.put(containerId, containerSqueezeUnit);
+                                        }
+
+//                                        //memory limit in MB
+//                                        Resource origin = context.getContainers().get(containerId).getResource();
+//                                        int originR = (int) pmemLimit / (1024 * 1024);
+//
+//
+//                                        ContainerMemoryStatus newContainerMemoryStatus =
+//                                                BuilderUtils.newContainerMemoryStatus(
+//                                                        containerId, vMemUsageRatio, pMemUsageRatio, origin);
+//
+//                                        containerMemoryStatuseses.put(containerId, newContainerMemoryStatus);
                                     }
                                 }
                             }
@@ -645,6 +674,31 @@ public class ContainersMonitorImpl extends AbstractService implements
                 Map.Entry<ContainerId, ContainerMemoryStatus> entry = it.next();
                 ContainerId containerId = entry.getKey();
                 ContainerMemoryStatus containerMemStatus = entry.getValue();
+
+//              LOG.debug("ContainerID " + containerId +
+//              "'s memory status: [ vMemUsageRatio: " + containerMemStatus.getVirtualMemUsage()
+//              + ", pMemUsageRatio: " + containerMemStatus.getPhysicalMemUsage() + " ]");
+
+                returnContainerMemStatuses.add(containerMemStatus);
+            }
+        }
+
+        return returnContainerMemStatuses;
+    }
+
+    @Override
+    public synchronized List<ContainerSqueezeUnit> getContainerResourceUsageStatues() {
+        List<ContainerSqueezeUnit> returnContainerMemStatuses = new ArrayList<ContainerSqueezeUnit>();
+
+        synchronized (containerSqueezeUnitMap) {
+            LOG.debug("Return current memory status of each container.");
+
+            for (Iterator<Map.Entry<ContainerId, ContainerSqueezeUnit>> it =
+                         containerSqueezeUnitMap.entrySet().iterator(); it.hasNext(); ) {
+
+                Map.Entry<ContainerId, ContainerSqueezeUnit> entry = it.next();
+                ContainerId containerId = entry.getKey();
+                ContainerSqueezeUnit containerMemStatus = entry.getValue();
 
 //              LOG.debug("ContainerID " + containerId +
 //              "'s memory status: [ vMemUsageRatio: " + containerMemStatus.getVirtualMemUsage()

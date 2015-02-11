@@ -50,9 +50,9 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
     private Thread squeezeOperator;
     private final Object timerMonitor = new Object();
 
-    private final Comparator<ContainerMemoryStatus> comparator = new MemoryStatusComparator();
-    private final PriorityBlockingQueue<ContainerMemoryStatus> runningContainerMemoryStatus = new
-            PriorityBlockingQueue<ContainerMemoryStatus>(20, comparator);
+    private final Comparator<ContainerSqueezeUnit> comparator = new MemoryStatusComparator();
+    private final PriorityBlockingQueue<ContainerSqueezeUnit> runningContainerMemoryStatus = new
+            PriorityBlockingQueue<ContainerSqueezeUnit>(20, comparator);
 
     private final Map<ContainerId, NodeId> containerIdToNodeId = new HashMap<ContainerId, NodeId>();
     private final Map<ContainerId, ContainerSqueezeUnit> currentSqueezedContainers = new HashMap<ContainerId, ContainerSqueezeUnit>();
@@ -63,10 +63,16 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
         this.threshold = 0.3;
     }
 
-    public PeriodicResourceSchedulerImpl(RMContext context, double threshold){
+    public PeriodicResourceSchedulerImpl(RMContext context, double threshold,
+            String algorithm){
         super(PeriodicResourceSchedulerImpl.class.getName());
         this.context = context;
         this.threshold = threshold;
+
+        if (algorithm.equals("fair")){
+            // TODO: use fair periodically scheduler
+        }
+
     }
 
     // when operating node squeeze, stop receive heartbeat information
@@ -82,35 +88,37 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
             // simply return all non-master containers for testing
             // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
+            int size = (int)(runningContainerMemoryStatus.size()/4);
+            int count = 0;
+
             while (!runningContainerMemoryStatus.isEmpty()) {
-                ContainerMemoryStatus cms = runningContainerMemoryStatus.poll();
+                if (count == size)
+                    break;
+
+                ContainerSqueezeUnit cms = runningContainerMemoryStatus.poll();
                 ContainerId containerId = cms.getContainerId();
                 NodeId nodeId = containerIdToNodeId.get(containerId);
 
                 synchronized (currentSqueezedContainers){
                     if( currentSqueezedContainers.containsKey(containerId)) {
                             continue;
+                    } else {
+                        currentSqueezedContainers.put(containerId, cms);
+                        LOG.debug("Periodic scheduler is picking container to be squeeze: " + cms);
+                        // generate memory squeeze unit
+
+                        // Resource above threshold is available to squeeze
+                        Resource diff = cms.getDiff();
+
+                        containersToBeSqueezed.add(BuilderUtils.newContainerSqueezeUnit(
+                                cms.getContainerId(), cms.getDiff(), (int)cms.getPriority()
+                        ));
+
+                        count ++;
                     }
                  }
 
-                LOG.debug("Periodic scheduler is picking container to be squeeze: " + cms);
-                // generate memory squeeze unit
-//                Resource origin = cms.getOriginResource();
-//                Resource target = BuilderUtils.newResource(origin.getMemory() / 2, 1);
 
-                // Resource above threshold is available to squeeze
-                Resource diff = BuilderUtils.newResource(
-                        (int)((double)cms.getOriginResource().getMemory() * this.threshold),
-                        1);
-//                containersToBeSqueezed.add(BuilderUtils.newContainerSqueezeUnit(
-//                        cms.getContainerId(),
-//                        origin, target
-//                ));
-
-                containersToBeSqueezed.add(BuilderUtils.newContainerSqueezeUnit(
-                        cms.getContainerId(),
-                        diff
-                ));
             }
 
         }
@@ -187,7 +195,7 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
         NodeId nodeId = event.getNodeId();
         switch (event.getType()){
             case MEMORY_STATUSES_UPDATE:
-                List<ContainerMemoryStatus> containerMemoryStatuses = ((PeriodicSchedulerStatusUpdateEvent) event).getContainerMemoryStatuses();
+                List<ContainerSqueezeUnit> containerMemoryStatuses = ((PeriodicSchedulerStatusUpdateEvent) event).getContainerMemoryStatuses();
                 if (containerMemoryStatuses.isEmpty()) {
                     LOG.debug("No container memory status from " + nodeId);
                 } else {
@@ -214,18 +222,18 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
     }
 
-    private void updateStatuses(List<ContainerMemoryStatus> containerMemoryStatuses, NodeId nodeId) {
+    private void updateStatuses(List<ContainerSqueezeUnit> containerMemoryStatuses, NodeId nodeId) {
         assert (containerMemoryStatuses != null);
 
         synchronized (runningContainerMemoryStatus) {
-            for (ContainerMemoryStatus containerMemoryStatus : containerMemoryStatuses) {
+            for (ContainerSqueezeUnit containerMemoryStatus : containerMemoryStatuses) {
 
                 synchronized (currentSqueezedContainers) {
                     if (currentSqueezedContainers.containsKey(containerMemoryStatus.getContainerId())) {
                             continue;
                     } else {
                         if (runningContainerMemoryStatus.contains(containerMemoryStatus)) {
-                            LOG.debug("Updating memory usage of container  " + containerMemoryStatus.getContainerId());
+                            LOG.debug("Updating resource usage of container  " + containerMemoryStatus.getContainerId());
                             runningContainerMemoryStatus.remove(containerMemoryStatus);
                         }
 

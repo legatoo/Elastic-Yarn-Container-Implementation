@@ -245,7 +245,7 @@ public class ContainerImpl implements Container {
                             new KilledExternallyTransition())
 
                     // new transation fro squeezing
-                    .addTransition(ContainerState.RUNNING, ContainerState.RUNNING,
+                    .addTransition(ContainerState.RUNNING, ContainerState.SQUEEZED,
                             ContainerEventType.CONTAINER_SQUEEZE,
                             new SqueezeContainerTransition())
 

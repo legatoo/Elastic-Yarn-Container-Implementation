@@ -36,7 +36,10 @@ public class ContainerSqueezer extends AbstractService
     private AtomicBoolean ifSqueeze = new AtomicBoolean(false);
 
     private final Map<ContainerId, ContainerSqueezeUnit> currentSqueezedContainers
-            = new HashMap<ContainerId, ContainerSqueezeUnit>();
+            = Collections.synchronizedMap(new HashMap<ContainerId, ContainerSqueezeUnit>());
+
+    private final List<ContainerSqueezeUnit> squeezedContainersInThisRound =
+            new ArrayList<ContainerSqueezeUnit>();
 
 
     public ContainerSqueezer(Context context, Dispatcher dispatcher,
@@ -82,6 +85,7 @@ public class ContainerSqueezer extends AbstractService
 
                         // 2. keep record in ContainerSqueezer for query
                         currentSqueezedContainers.put(containerId, containerSqueezeUnit);
+                        squeezedContainersInThisRound.add(containerSqueezeUnit);
 
                         // 3. inform Container Monitor
                         // done in ContainerImpl
@@ -89,6 +93,7 @@ public class ContainerSqueezer extends AbstractService
                         // 4. update heart beat about successfully squeezed containers
                         setIfSqueeze(true);
                     }
+
                 }
 
                 break;
@@ -105,6 +110,19 @@ public class ContainerSqueezer extends AbstractService
 
         if (!currentSqueezedContainers.isEmpty()) {
             returnResult.addAll(currentSqueezedContainers.values());
+        }
+
+        return returnResult;
+    }
+
+    public List<ContainerSqueezeUnit> getSqueezedContainersInThisRound(){
+        List<ContainerSqueezeUnit> returnResult = new ArrayList<ContainerSqueezeUnit>();
+
+        synchronized (squeezedContainersInThisRound){
+            if (!squeezedContainersInThisRound.isEmpty()){
+                returnResult.addAll(squeezedContainersInThisRound);
+                squeezedContainersInThisRound.clear();
+            }
         }
 
         return returnResult;

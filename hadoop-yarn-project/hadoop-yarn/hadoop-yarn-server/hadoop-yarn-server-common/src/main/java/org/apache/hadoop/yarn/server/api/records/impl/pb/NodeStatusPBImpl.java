@@ -51,7 +51,7 @@ public class NodeStatusPBImpl extends NodeStatus {
     private List<ContainerStatus> containers = null;
     private NodeHealthStatus nodeHealthStatus = null;
     private List<ApplicationId> keepAliveApplications = null;
-    private List<ContainerMemoryStatus> containerMemoryStatuses = null;
+    private List<ContainerSqueezeUnit> containerMemoryStatuses = null;
     private List<ContainerSqueezeUnit> squeezedContainers = null;
 
     public NodeStatusPBImpl() {
@@ -148,12 +148,12 @@ public class NodeStatusPBImpl extends NodeStatus {
         builder.clearContainerMemoryStatuses();
         if (containerMemoryStatuses == null)
             return;
-        Iterable<ContainerMemoryStatusProto> iterable = new Iterable<ContainerMemoryStatusProto>() {
+        Iterable<ContainerSqueezeUnitProto> iterable = new Iterable<ContainerSqueezeUnitProto>() {
             @Override
-            public Iterator<ContainerMemoryStatusProto> iterator() {
-                return new Iterator<ContainerMemoryStatusProto>() {
+            public Iterator<ContainerSqueezeUnitProto> iterator() {
+                return new Iterator<ContainerSqueezeUnitProto>() {
 
-                    Iterator<ContainerMemoryStatus> iter = containerMemoryStatuses.iterator();
+                    Iterator<ContainerSqueezeUnit> iter = containerMemoryStatuses.iterator();
 
                     @Override
                     public boolean hasNext() {
@@ -161,7 +161,7 @@ public class NodeStatusPBImpl extends NodeStatus {
                     }
 
                     @Override
-                    public ContainerMemoryStatusProto next() {
+                    public ContainerSqueezeUnitProto next() {
                         return convertToProtoFormat(iter.next());
                     }
 
@@ -325,7 +325,7 @@ public class NodeStatusPBImpl extends NodeStatus {
 
     @Override
     public synchronized void setContainerMemoryStatuses(
-            List<ContainerMemoryStatus> containerMemoryStatuses) {
+            List<ContainerSqueezeUnit> containerMemoryStatuses) {
         if (containerMemoryStatuses == null) {
             builder.clearContainerMemoryStatuses();
         }
@@ -333,7 +333,7 @@ public class NodeStatusPBImpl extends NodeStatus {
     }
 
     @Override
-    public synchronized List<ContainerMemoryStatus> getContainerMemoryStatuses() {
+    public synchronized List<ContainerSqueezeUnit> getContainerMemoryStatuses() {
         initContainerMemoryStatuses();
         return this.containerMemoryStatuses;
     }
@@ -387,10 +387,10 @@ public class NodeStatusPBImpl extends NodeStatus {
         }
 
         NodeStatusProtoOrBuilder p = viaProto ? proto : builder;
-        List<ContainerMemoryStatusProto> list = p.getContainerMemoryStatusesList();
-        this.containerMemoryStatuses = new ArrayList<ContainerMemoryStatus>();
+        List<ContainerSqueezeUnitProto> list = p.getContainerMemoryStatusesList();
+        this.containerMemoryStatuses = new ArrayList<ContainerSqueezeUnit>();
 
-        for (ContainerMemoryStatusProto c : list) {
+        for (ContainerSqueezeUnitProto c : list) {
             this.containerMemoryStatuses.add(convertFromProtoFormat(c));
         }
     }
