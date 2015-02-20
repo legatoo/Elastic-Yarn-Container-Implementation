@@ -382,6 +382,7 @@ public class ContainerImpl implements Container {
             case CONTAINER_CLEANEDUP_AFTER_KILL:
             case CONTAINER_RESOURCES_CLEANINGUP:
                 return org.apache.hadoop.yarn.api.records.ContainerState.RUNNING;
+            // squeeze is also running for the view of scheduler
             case SQUEEZED:
                 return org.apache.hadoop.yarn.api.records.ContainerState.RUNNING;
             case DONE:

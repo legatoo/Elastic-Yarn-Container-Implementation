@@ -47,11 +47,13 @@ public abstract class SchedulerNode {
 
     private Resource availableResource = Resource.newInstance(0, 0);
     private Resource usedResource = Resource.newInstance(0, 0);
-    private Resource squeezedResource = Resource.newInstance(0, 0);
+    private Resource availableSqueezedResource = Resource.newInstance(0, 0);
+    private Resource usedSqueezedResource = Resource.newInstance(0, 0);
     private Resource totalResourceCapability;
     private RMContainer reservedContainer;
     private volatile int numContainers;
     private volatile int numSqueezedContainers;
+    private volatile int numSpeculativeContainers;
 
 
     /* set of containers that are allocated containers */
@@ -60,6 +62,9 @@ public abstract class SchedulerNode {
 
     // TODO: squeezed containers
     private final Map<ContainerId, RMContainer> squeezedContainers =
+            new HashMap<ContainerId, RMContainer>();
+
+    private final Map<ContainerId, RMContainer> speculativeContainers =
             new HashMap<ContainerId, RMContainer>();
 
     private final RMNode rmNode;
@@ -135,10 +140,32 @@ public abstract class SchedulerNode {
      * @param rmContainer allocated container
      */
     public synchronized void allocateContainer(RMContainer rmContainer) {
-        Container container = rmContainer.getContainer();
-        deductAvailableResource(container.getResource());
-        ++numContainers;
 
+        boolean speculative = rmContainer.getContainer().getIfSpeculative();
+        Container container = rmContainer.getContainer();
+
+        if (speculative){
+            Resource padding = container.getPadding();
+            Resource capacity = container.getResource();
+
+            deductAvailableSqueezedResource(padding);
+            deductAvailableResource(Resources.subtract(capacity, padding));
+
+            speculativeContainers.put(container.getId(), rmContainer);
+            ++numSpeculativeContainers;
+
+            LOG.info("Assigned one speculative container " + container.getId() +
+                    " of capacity " + container.getResource() + " on host " + rmNode.getNodeAddress()
+                    + ", which has " + container.getPadding() + " padding resource and cost"
+                    + Resources.subtract(capacity, padding) +
+                    " available resources. current available resource is "
+                    + getAvailableResource() + " current used squeezed resource is " + getUsedSqueezedResource()
+                    + ", available squeezed resource now is " + getAvailableSqueezedResource());
+        } else {
+            deductAvailableResource(container.getResource());
+        }
+
+        ++numContainers;
         launchedContainers.put(container.getId(), rmContainer);
 
         LOG.info("Assigned container " + container.getId() + " of capacity "
@@ -148,20 +175,47 @@ public abstract class SchedulerNode {
                 + " available after allocation");
     }
 
-    public synchronized void squeezeContainer(RMContainer rmContainer,
-               ContainerSqueezeUnit containerSqueezeUnit) {
-        // TODO: put rmContainer into squeezedContainers
-        squeezedContainers.put(containerSqueezeUnit.getContainerId(), rmContainer);
-        numSqueezedContainers++;
-        Resources.addTo(squeezedResource, containerSqueezeUnit.getDiff());
+//    /**
+//     * The Scheduler has allocated containers on this node to the given
+//     * application.
+//     *
+//     * @param rmContainer allocated container
+//     */
+//    public synchronized void allocateContainerWithSqueezedSpace(RMContainer rmContainer) {
+//
+//        Container container = rmContainer.getContainer();
+//        assert( container.getResource().getMemory() > getAvailableResource().getMemory());
+//
+//        // the priority is to use squeezed space first
+//        if ( getSqueezedResource().getMemory() >= container.getResource().getMemory()){
+//            deductSqueezedResource(container.getResource());
+//            container.setPadding(container.getResource());
+//        } else {
+//            Resource diff = Resources.subtract(container.getResource(), getSqueezedResource());
+//
+//            deductAvailableResource(diff);
+//            container.setPadding(getSqueezedResource());
+//
+//            // squeezed resource is used up
+//            squeezedResource.setMemory(0);
+//            squeezedResource.setVirtualCores(0);
+//
+//        }
+//
+//        ++numSqueezedContainers;
+//        ++numContainers;
+//
+//        launchedContainers.put(container.getId(), rmContainer);
+//        speculativeContainers.put(container.getId(), rmContainer);
+//
+//        LOG.info("Assigned speculative container " + container.getId() + " of capacity "
+//                + container.getResource() + " on host " + rmNode.getNodeAddress()
+//                + ", which has " + numContainers + " containers, "
+//                + getUsedResource() + " used and " + getSqueezedResource() + " squeezed used and "
+//                + getAvailableResource()
+//                + " available and " + getSqueezedResource() + " available squeezed space after allocation");
+//    }
 
-        // TODO: add Resource of diff into available resource
-        addAvailableResource(containerSqueezeUnit.getDiff());
-
-        LOG.debug("Add squeeze diff " + containerSqueezeUnit.getDiff() + " from " +
-            containerSqueezeUnit.getContainerId() + " to node resource. ");
-        LOG.debug("Current resource is " + getAvailableResource());
-    }
 
     /**
      * Get available resources on the node.
@@ -169,7 +223,9 @@ public abstract class SchedulerNode {
      * @return available resources on the node
      */
     public synchronized Resource getAvailableResource() {
+        //TODO: HAKUNAMI
         return this.availableResource;
+        //return Resources.add(this.availableResource, this.squeezedResource);
     }
 
     /**
@@ -179,6 +235,14 @@ public abstract class SchedulerNode {
      */
     public synchronized Resource getUsedResource() {
         return this.usedResource;
+    }
+
+    public synchronized Resource getUsedSqueezedResource(){
+        return this.usedSqueezedResource;
+    }
+
+    public synchronized Resource getAvailableSqueezedResource(){
+        return this.availableSqueezedResource;
     }
 
     /**
@@ -198,7 +262,16 @@ public abstract class SchedulerNode {
     }
 
     private synchronized void updateResource(Container container) {
-        addAvailableResource(container.getResource());
+
+        if (container.getIfSpeculative()){
+            addAvailableResource(Resources.subtract(
+                    container.getResource(), container.getPadding()));
+            releaseSqueezedResource(container.getPadding());
+            --numSpeculativeContainers;
+        } else {
+            addAvailableResource(container.getResource());
+        }
+
         --numContainers;
     }
 
@@ -215,14 +288,44 @@ public abstract class SchedulerNode {
 
     /* remove the containers from the nodemanger */
         if (null != launchedContainers.remove(container.getId())) {
+
+            if (squeezedContainers.containsKey(container.getId()))
+                squeezedContainers.remove(container.getId());
+
+            if (speculativeContainers.containsKey(container.getId())){
+                speculativeContainers.remove(container.getId());
+            }
+
             updateResource(container);
         }
+
 
         LOG.info("Released container " + container.getId() + " of capacity "
                 + container.getResource() + " on host " + rmNode.getNodeAddress()
                 + ", which currently has " + numContainers + " containers, "
                 + getUsedResource() + " used and " + getAvailableResource()
                 + " available" + ", release resources=" + true);
+    }
+
+    /**
+     * Squeeze an allocated container on this node
+     *
+     * @param rmContainer
+     * @param containerSqueezeUnit
+     */
+    public synchronized void squeezeContainer(RMContainer rmContainer,
+                                              ContainerSqueezeUnit containerSqueezeUnit) {
+        // put rmContainer into squeezedContainers
+        if (!squeezedContainers.containsKey(containerSqueezeUnit.getContainerId())) {
+            squeezedContainers.put(containerSqueezeUnit.getContainerId(), rmContainer);
+            numSqueezedContainers++;
+            addAvailableSqueezedResource(containerSqueezeUnit.getDiff());
+
+            LOG.debug("Add squeeze diff " + containerSqueezeUnit.getDiff() + " from " +
+                    containerSqueezeUnit.getContainerId() + " to node resource. ");
+        }
+
+        LOG.debug("Current available squeezed resource is " + getAvailableSqueezedResource());
     }
 
     private synchronized void addAvailableResource(Resource resource) {
@@ -235,6 +338,26 @@ public abstract class SchedulerNode {
         Resources.subtractFrom(usedResource, resource);
     }
 
+    private synchronized void addAvailableSqueezedResource(Resource resource) {
+        if (resource == null) {
+            LOG.error("Invalid resource addition of null resource for "
+                    + rmNode.getNodeAddress());
+            return;
+        }
+        Resources.addTo(availableSqueezedResource, resource);
+    }
+
+    private synchronized void releaseSqueezedResource(Resource resource) {
+        if (resource == null) {
+            LOG.error("Invalid resource addition of null resource for "
+                    + rmNode.getNodeAddress());
+            return;
+        }
+        Resources.addTo(availableSqueezedResource, resource);
+        Resources.subtract(usedSqueezedResource, resource);
+    }
+
+
     private synchronized void deductAvailableResource(Resource resource) {
         if (resource == null) {
             LOG.error("Invalid deduction of null resource for "
@@ -243,6 +366,16 @@ public abstract class SchedulerNode {
         }
         Resources.subtractFrom(availableResource, resource);
         Resources.addTo(usedResource, resource);
+    }
+
+    private synchronized void deductAvailableSqueezedResource(Resource resource) {
+        if (resource == null) {
+            LOG.error("Invalid deduction of null resource for "
+                    + rmNode.getNodeAddress());
+            return;
+        }
+        Resources.subtractFrom(availableSqueezedResource, resource);
+        Resources.addTo(usedSqueezedResource, resource);
     }
 
     /**
@@ -300,7 +433,7 @@ public abstract class SchedulerNode {
             LOG.debug("Before: " + getAvailableResource());
             Resource diff = csu.getDiff();
             Resources.addTo(availableResource, diff);
-            Resources.addTo(squeezedResource, diff);
+            Resources.addTo(availableSqueezedResource, diff);
             LOG.debug("After: " + getAvailableResource());
         }
     }

@@ -125,6 +125,11 @@ public class ContainerSqueezer extends AbstractService
             }
         }
 
+        // return squeezed containers in this round and
+        // set squeeze flag to false
+
+        setIfSqueeze(false);
+
         return returnResult;
     }
 

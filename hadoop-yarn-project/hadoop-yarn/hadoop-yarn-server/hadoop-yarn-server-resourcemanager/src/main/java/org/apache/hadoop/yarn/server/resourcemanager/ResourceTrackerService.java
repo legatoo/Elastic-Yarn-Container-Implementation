@@ -363,41 +363,6 @@ public class ResourceTrackerService extends AbstractService implements
 
         NodeId nodeId = remoteNodeStatus.getNodeId();
 
-
-
-        // Receive container memory usage from Node Manager
-        List<ContainerSqueezeUnit> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
-
-        if( !containerMemoryStatuses.isEmpty()) {
-            LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
-            for (ContainerSqueezeUnit status : containerMemoryStatuses) {
-                ContainerId containerId = status.getContainerId();
-//                double vMemUsageRatio = status.getVirtualMemUsage();
-//                double pMemUsageRatio = status.getPhysicalMemUsage();
-                LOG.debug("hakunami" +
-                        ": [ ContainerId: " + containerId +
-                        ", Diff: " + status.getDiff() + ", Priority: " + status.getPriority()
-                        + ", ]");
-
-            }
-        }else{
-            LOG.debug("Receive 0 container memory usage from NM");
-        }
-
-        List<ContainerSqueezeUnit> squeezedContainers = remoteNodeStatus.getSqueezedContainers();
-        if (!squeezedContainers.isEmpty()){
-            for (ContainerSqueezeUnit c : squeezedContainers){
-                LOG.debug("Container " + c + " has finished squeeze operation.");
-            }
-
-            this.rmContext.getDispatcher().getEventHandler().handle(
-                    new PeriodicSchedulerSqueezeDoneEvent(nodeId, squeezedContainers));
-
-        } else {
-            LOG.debug("No container is squeezed from NM side.");
-        }
-
-
         // 1. Check if it's a registered node
         RMNode rmNode = this.rmContext.getRMNodes().get(nodeId);
         if (rmNode == null) {
@@ -445,9 +410,38 @@ public class ResourceTrackerService extends AbstractService implements
             return resync;
         }
 
+        // 4. check if any containers have finished squeeze operation
+        List<ContainerSqueezeUnit> squeezedContainers = remoteNodeStatus.getSqueezedContainers();
+        if (!squeezedContainers.isEmpty()){
+            LOG.debug("These containers have finished squeeze operation on NodeManager: ");
+            for (ContainerSqueezeUnit c : squeezedContainers){
+                LOG.debug(c);
+            }
+
+            // let periodical scheduler keeps records about squeezed containers
+            this.rmContext.getDispatcher().getEventHandler().handle(
+                    new PeriodicSchedulerSqueezeDoneEvent(nodeId, squeezedContainers));
+
+        } else {
+            LOG.debug("No container is squeezed from NM side.");
+        }
+
+        // 5. send received container memory usage from Node Manager to periodical scheduler
+        List<ContainerSqueezeUnit> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
+
+        if( !containerMemoryStatuses.isEmpty()) {
+            LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
+
+            // Send container memory statuses to periodic scheduler
+            this.rmContext.getDispatcher().getEventHandler().handle(
+                    new PeriodicSchedulerStatusUpdateEvent(nodeId, containerMemoryStatuses));
+        }else{
+            LOG.debug("Receive 0 container memory usage from NM Monitor.");
+        }
+
         Resource available = ((CapacityScheduler) rmContext.getScheduler()).getSchedulerNode(nodeId).getAvailableResource();
         LOG.debug("In heartbeat " + lastNodeHeartbeatResponse +
-                " available resource in node " + nodeId +"is "
+                " available resource on node " + nodeId +" is "
                 + available );
 
         // Heartbeat response
@@ -455,16 +449,16 @@ public class ResourceTrackerService extends AbstractService implements
                 .newNodeHeartbeatResponse(lastNodeHeartbeatResponse.
                                 getResponseId() + 1, NodeAction.NORMAL, null, null, null, null,
                         nextHeartBeatInterval);
+
         //rmNode is the specific node getting by the nodeId
         rmNode.updateNodeHeartbeatResponseForCleanup(nodeHeartBeatResponse);
 
         // x. check if this RMNode need to be squeezed
         // TODO: if this node need squeeze operation, fill heartbeat response
-        if (rmNode.getIfSqueeze().get()) {
+        if (rmNode.getIfSqueeze()) {
             rmNode.updateNodeHeartbeatResponseForSqueeze(nodeHeartBeatResponse);
             rmNode.setIfSqueeze(false);
-            // TODO: keep records of these squeezed containers
-            rmNode.cleanContainersToBeSqueezed();
+            //rmNode.cleanContainersToBeSqueezed();
         }
 
 
@@ -476,16 +470,13 @@ public class ResourceTrackerService extends AbstractService implements
             nodeHeartBeatResponse.setSystemCredentialsForApps(systemCredentials);
         }
 
-        // 4. Send status to RMNode, saving the latest response.
+        // -1. Send status to RMNode, saving the latest response.
         this.rmContext.getDispatcher().getEventHandler().handle(
                 new RMNodeStatusEvent(nodeId, remoteNodeStatus.getNodeHealthStatus(),
                         remoteNodeStatus.getContainersStatuses(),
                         remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse,
-                        containerMemoryStatuses));
+                        squeezedContainers));
 
-        //5. Send container memory statuses to periodic scheduler
-        this.rmContext.getDispatcher().getEventHandler().handle(
-                new PeriodicSchedulerStatusUpdateEvent(nodeId, containerMemoryStatuses));
 
         return nodeHeartBeatResponse;
     }

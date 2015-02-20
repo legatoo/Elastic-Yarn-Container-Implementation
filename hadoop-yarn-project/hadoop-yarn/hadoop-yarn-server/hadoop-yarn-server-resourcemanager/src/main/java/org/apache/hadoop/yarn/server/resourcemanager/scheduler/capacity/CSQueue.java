@@ -148,6 +148,16 @@ public interface CSQueue
      */
     public Resource getUsedResources();
 
+
+    /**
+     * Get the amount of Resource that comes from current squeezed containers.
+     *
+     * @return squeezed resources by the queue and it's children
+     */
+    public Resource getUsedSqueezedResources();
+
+    public Resource getAvailableSqueezedResource();
+
     /**
      * Get the current run-state of the queue
      *
@@ -240,7 +250,8 @@ public interface CSQueue
      */
     public void squeezeContainer(Resource clusterResource, FiCaSchedulerNode node, FiCaSchedulerApp application,
                                  RMContainer rmContainer, ContainerSqueezeUnit containerSqueezeUnit,
-                                 RMContainerEventType event);
+                                 RMContainerEventType event, CSQueue childQueue,
+                                 boolean sortQueues);
 
     /**
      * Get the number of applications in the queue.

@@ -634,14 +634,26 @@ public class ParentQueue extends AbstractCSQueue {
             // Careful! Locking order is important!
             // Book keeping
             synchronized (this) {
-                super.releaseResource(clusterResource, rmContainer.getContainer()
-                        .getResource(), labelManager.getLabelsOnNode(node.getNodeID()));
+                Container container = rmContainer.getContainer();
+
+                if (container.getIfSpeculative()){
+                    super.releaseResource(clusterResource,
+                            Resources.subtract(container.getResource(), container.getPadding()),
+                            labelManager.getLabelsOnNode(node.getNodeID()));
+                    super.releaseSqueezeResource(clusterResource, container.getPadding());
+                } else {
+                    super.releaseResource(clusterResource, rmContainer.getContainer()
+                            .getResource(), labelManager.getLabelsOnNode(node.getNodeID()));
+                }
+
 
                 LOG.info("completedContainer" +
                         " queue=" + getQueueName() +
                         " usedCapacity=" + getUsedCapacity() +
                         " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
                         " used=" + usedResources +
+                        " available squeezed=" + availableSqueezedResource +
+                        " used squeezed=" + usedSqueezedResource +
                         " cluster=" + clusterResource);
             }
 
@@ -675,12 +687,13 @@ public class ParentQueue extends AbstractCSQueue {
     public void squeezeContainer(Resource clusterResource, FiCaSchedulerNode node,
                                  FiCaSchedulerApp application, RMContainer rmContainer,
                                  ContainerSqueezeUnit containerSqueezeUnit,
-                                 RMContainerEventType event) {
+                                 RMContainerEventType event, CSQueue squeezedChildQueue,
+                                 boolean sortQueues) {
         if (application != null) {
             // Careful! Locking order is important!
             // Book keeping
             synchronized (this) {
-                super.squeezeResource(clusterResource, containerSqueezeUnit.getDiff(),
+                super.addSqueezeResource(clusterResource, node.getNodeID(), containerSqueezeUnit.getDiff(),
                         labelManager.getLabelsOnNode(node.getNodeID()));
 
                 LOG.info("SqueezedContainer" +
@@ -688,6 +701,7 @@ public class ParentQueue extends AbstractCSQueue {
                         " usedCapacity=" + getUsedCapacity() +
                         " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
                         " used=" + usedResources +
+                        " squeezed=" + availableSqueezedResource +
                         " cluster=" + clusterResource);
             }
 
@@ -695,7 +709,7 @@ public class ParentQueue extends AbstractCSQueue {
             if (parent != null) {
                 // complete my parent
                 parent.squeezeContainer(clusterResource, node, application,
-                        rmContainer, containerSqueezeUnit, event);
+                        rmContainer, containerSqueezeUnit, event, this, sortQueues);
             }
         }
     }

@@ -822,6 +822,8 @@ public class CapacityScheduler extends
         }
 
         // Sanity check
+        // what's the meaning of this????
+
         SchedulerUtils.normalizeRequests(
                 ask, getResourceCalculator(), getClusterResource(),
                 getMinimumResourceCapability(), maximumAllocation);
@@ -841,10 +843,12 @@ public class CapacityScheduler extends
 
             if (!ask.isEmpty()) {
 
+
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("allocate: pre-update" +
                             " applicationAttemptId=" + applicationAttemptId +
-                            " application=" + application);
+                            " application=" + application +
+                            " hakunami: " + ask);
                 }
                 application.showRequests();
 
@@ -899,6 +903,8 @@ public class CapacityScheduler extends
         return root.getQueueUserAclInfo(user);
     }
 
+    // what need to do is already put into nodeUpdateQueue list
+    // when RMNode received NODE_UPDATE event
     private synchronized void nodeUpdate(RMNode nm) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("nodeUpdate: " + nm + " clusterResources: " + clusterResource);
@@ -907,11 +913,19 @@ public class CapacityScheduler extends
         FiCaSchedulerNode node = getNode(nm.getNodeID());
 
         List<UpdatedContainerInfo> containerInfoList = nm.pullContainerUpdates();
+
         List<ContainerStatus> newlyLaunchedContainers = new ArrayList<ContainerStatus>();
         List<ContainerStatus> completedContainers = new ArrayList<ContainerStatus>();
+
+        // newly squeezed containers
+        List<ContainerSqueezeUnit> newlySqueezedContainers =
+                new ArrayList<ContainerSqueezeUnit>();
+
         for (UpdatedContainerInfo containerInfo : containerInfoList) {
             newlyLaunchedContainers.addAll(containerInfo.getNewlyLaunchedContainers());
             completedContainers.addAll(containerInfo.getCompletedContainers());
+
+            newlySqueezedContainers.addAll(containerInfo.getNewlySqueezedContainers());
         }
 
         // Processing the newly launched containers
@@ -925,6 +939,15 @@ public class CapacityScheduler extends
             LOG.debug("Container FINISHED: " + containerId);
             completedContainer(getRMContainer(containerId),
                     completedContainer, RMContainerEventType.FINISHED);
+        }
+
+        // Process the newly squeezed contaienrs
+        for ( ContainerSqueezeUnit squeezedContainer : newlySqueezedContainers){
+
+            //TODO: 1. update node metrics
+            ContainerId containerId = squeezedContainer.getContainerId();
+            LOG.debug("Container SQUEEZED: " + containerId);
+            squeezedContainer(squeezedContainer, RMContainerEventType.SQUEEZE);
         }
 
         // Now node data structures are upto date and ready for scheduling.
@@ -983,6 +1006,7 @@ public class CapacityScheduler extends
 
         // Try to schedule more if there are no reservations to fulfill
         if (node.getReservedContainer() == null) {
+
             if (calculator.computeAvailableContainers(node.getAvailableResource(),
                     minimumAllocation) > 0) {
                 if (LOG.isDebugEnabled()) {
@@ -990,6 +1014,10 @@ public class CapacityScheduler extends
                             ", available: " + node.getAvailableResource());
                 }
                 root.assignContainers(clusterResource, node, false);
+            } else {
+                // TODO: take squeezed resource into consideration here
+                LOG.debug(" available resource is not enough. " +
+                        "TODO: take squeezed resource into consideration here");
             }
         } else {
             LOG.info("Skipping scheduling since node " + node.getNodeID() +
@@ -1022,6 +1050,9 @@ public class CapacityScheduler extends
                         nodeResourceUpdatedEvent.getResourceOption());
             }
             break;
+            // every NM-RM heart beat will send containers[launched & completed]
+            // to RMNode.nodeUpdateQueue list, and here will use it to update node
+            // in the view of scheulder
             case NODE_UPDATE: {
                 NodeUpdateSchedulerEvent nodeUpdatedEvent = (NodeUpdateSchedulerEvent) event;
                 RMNode node = nodeUpdatedEvent.getRMNode();
@@ -1031,6 +1062,7 @@ public class CapacityScheduler extends
                 }
             }
             break;
+            // receive event from RMAppImpl
             case APP_ADDED: {
                 AppAddedSchedulerEvent appAddedEvent = (AppAddedSchedulerEvent) event;
                 String queueName =
@@ -1051,6 +1083,7 @@ public class CapacityScheduler extends
                         appRemovedEvent.getFinalState());
             }
             break;
+            // receive event from RMAPPAttemptImple
             case APP_ATTEMPT_ADDED: {
                 AppAttemptAddedSchedulerEvent appAttemptAddedEvent =
                         (AppAttemptAddedSchedulerEvent) event;
@@ -1078,22 +1111,23 @@ public class CapacityScheduler extends
                         RMContainerEventType.EXPIRE);
             }
             break;
-            case CONTAINER_SQUEEZED:
-                //TODO: Uupdate cluster resource
-                LOG.debug("Handlering " + event + " in CS");
-                ContainerSqueezedSchedulerEvent containerSqueezedSchedulerEvent =
-                        (ContainerSqueezedSchedulerEvent)event;
-                NodeId nodeId = containerSqueezedSchedulerEvent.getNodeId();
-                List<ContainerSqueezeUnit> containerAreSqueezed = containerSqueezedSchedulerEvent
-                        .getContainersAreSqueezed();
+//            case CONTAINER_SQUEEZED:
+//                // Uupdate cluster resource after receive squeeze done signal from periodic scheduler
+//                LOG.debug("Handlering " + event + " in Capacity Schduler.");
+//                ContainerSqueezedSchedulerEvent containerSqueezedSchedulerEvent =
+//                        (ContainerSqueezedSchedulerEvent)event;
+//                NodeId nodeId = containerSqueezedSchedulerEvent.getNodeId();
+//                List<ContainerSqueezeUnit> containerAreSqueezed = containerSqueezedSchedulerEvent
+//                        .getContainersAreSqueezed();
+//
+//                // should update corresponding RMNode
+//                //updateAfterSqueeze(nodeId, containerAreSqueezed);
+//                for (ContainerSqueezeUnit containerSqueezeUnit : containerAreSqueezed){
+//                    squeezedContainer(containerSqueezeUnit, RMContainerEventType.SQUEEZE);
+//                }
+//
+//                break;
 
-                // should update corresponding RMNode
-                //updateAfterSqueeze(nodeId, containerAreSqueezed);
-                for (ContainerSqueezeUnit containerSqueezeUnit : containerAreSqueezed){
-                    squeezedContainer(containerSqueezeUnit, RMContainerEventType.SQUEEZE);
-                }
-
-                break;
             default:
                 LOG.error("Invalid eventtype " + event.getType() + ". Ignoring!");
         }
@@ -1200,10 +1234,14 @@ public class CapacityScheduler extends
         // Inform the queue
         LeafQueue queue = (LeafQueue) application.getQueue();
         queue.squeezeContainer(clusterResource, node, application,
-                rmContainer, containerSqueezeUnit, event);
+                rmContainer, containerSqueezeUnit, event, null, true);
 
         LOG.info("Application attempt " + application.getApplicationAttemptId()
                 + " squeezed container " + container.getId() + " on node: " + node
+                + " node available resource " + node.getAvailableResource()
+                + " node used resource " + node.getUsedResource()
+                + " node squeezed resource " + node.getAvailableSqueezedResource()
+                + " node used squeezed resouce " + node.getUsedSqueezedResource()
                 + " with event: " + event);
 
     }
@@ -1234,7 +1272,7 @@ public class CapacityScheduler extends
         // Get the node on which the container was allocated
         FiCaSchedulerNode node = getNode(container.getNodeId());
 
-        // Inform the queue
+        // Inform the queue, start from LeafQueue
         LeafQueue queue = (LeafQueue) application.getQueue();
         queue.completedContainer(clusterResource, application, node,
                 rmContainer, containerStatus, event, null, true);

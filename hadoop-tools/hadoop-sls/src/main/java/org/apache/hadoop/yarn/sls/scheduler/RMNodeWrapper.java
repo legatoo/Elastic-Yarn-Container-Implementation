@@ -165,8 +165,8 @@ public class RMNodeWrapper implements RMNode {
     }
 
     @Override
-    public AtomicBoolean getIfSqueeze() {
-        return null;
+    public boolean getIfSqueeze() {
+        return false;
     }
 
     @Override

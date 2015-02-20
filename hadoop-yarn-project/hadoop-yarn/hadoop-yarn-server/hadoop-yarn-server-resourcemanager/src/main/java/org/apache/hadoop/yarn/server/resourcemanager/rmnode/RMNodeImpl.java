@@ -96,6 +96,9 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     /* set of containers that have just launched */
     private final Set<ContainerId> launchedContainers =
             new HashSet<ContainerId>();
+    /* set of containers that have been squeezed */
+    private final Set<ContainerSqueezeUnit> squeezedContainers =
+            new HashSet<ContainerSqueezeUnit>();
 
     /* set of containers that need to be cleaned */
     private final Set<ContainerId> containersToClean = new TreeSet<ContainerId>(
@@ -110,10 +113,15 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
 
     // TODO: should I store squeeze containers here?
     private final Set<ContainerSqueezeUnit> containersToBeSqueezed = new HashSet<ContainerSqueezeUnit>();
+
+    //private final Set<ContainerSqueezeUnit> currentSqueezedContainers = new HashSet<ContainerSqueezeUnit>();
     private final AtomicBoolean ifSqueeze = new AtomicBoolean(false);
 
     /* the list of applications that have finished and need to be purged */
     private final List<ApplicationId> finishedApplications = new ArrayList<ApplicationId>();
+
+    /* the list of containers that have been squeezed and need to be processed*/
+    private final List<ContainerSqueezeUnit> squeezedContainersNeedToBeProcessd = new ArrayList<ContainerSqueezeUnit>();
 
     private NodeHeartbeatResponse latestNodeHeartBeatResponse = recordFactory
             .newRecordInstance(NodeHeartbeatResponse.class);
@@ -308,12 +316,12 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     }
 
     @Override
-    public AtomicBoolean getIfSqueeze() {
-        return this.ifSqueeze;
+    public synchronized boolean getIfSqueeze() {
+        return this.ifSqueeze.get();
     }
 
     @Override
-    public void setIfSqueeze(boolean flag) {
+    public synchronized void setIfSqueeze(boolean flag) {
         ifSqueeze.set(flag);
     }
 
@@ -420,8 +428,11 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         try {
             // RMNode will clear the information about containersToClean etc. at the end
             // of heart beat
-            response.addAllContainersToBeSqueezed(containersToBeSqueezed);
-            this.containersToBeSqueezed.clear();
+            synchronized (containersToBeSqueezed) {
+                if (!containersToBeSqueezed.isEmpty())
+                    response.addAllContainersToBeSqueezed(containersToBeSqueezed);
+                this.containersToBeSqueezed.clear();
+            }
         } finally {
             this.writeLock.unlock();
         }
@@ -668,12 +679,14 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
 
         @Override
         public void transition(RMNodeImpl rmNode, RMNodeEvent event) {
-            rmNode.containersToBeSqueezed.addAll(((RMNodeSqueezeEvent) event).getContainersToBeSqueeze());
-
-            if (rmNode.ifSqueeze.compareAndSet(false, true)) {
-                LOG.debug("Set RMNode squeeze flag to " + rmNode.ifSqueeze.get());
-//                rmNode.containersToBeSqueezed.clear();
+            synchronized (rmNode.containersToBeSqueezed) {
+                rmNode.containersToBeSqueezed.addAll(((RMNodeSqueezeEvent) event).getContainersToBeSqueeze());
             }
+
+            rmNode.setIfSqueeze(true);
+            // set squeeze flag to true
+            LOG.debug("Set RMNode squeeze flag to " + rmNode.ifSqueeze.get());
+
         }
     }
 
@@ -761,6 +774,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
             MultipleArcTransition<RMNodeImpl, RMNodeEvent, NodeState> {
         @Override
         public NodeState transition(RMNodeImpl rmNode, RMNodeEvent event) {
+            LOG.debug("Processing transition: " + event);
 
             RMNodeStatusEvent statusEvent = (RMNodeStatusEvent) event;
 
@@ -772,6 +786,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
             rmNode.setHealthReport(remoteNodeHealthStatus.getHealthReport());
             rmNode.setLastHealthReportTime(
                     remoteNodeHealthStatus.getLastHealthReportTime());
+
             if (!remoteNodeHealthStatus.getIsNodeHealthy()) {
                 LOG.info("Node " + rmNode.nodeId + " reported UNHEALTHY with details: "
                         + remoteNodeHealthStatus.getHealthReport());
@@ -794,6 +809,9 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                     new ArrayList<ContainerStatus>();
             List<ContainerStatus> completedContainers =
                     new ArrayList<ContainerStatus>();
+            List<ContainerSqueezeUnit> newlySqueezedContainers =
+                    new ArrayList<ContainerSqueezeUnit>();
+
             for (ContainerStatus remoteContainer : statusEvent.getContainers()) {
                 ContainerId containerId = remoteContainer.getContainerId();
 
@@ -813,7 +831,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                     continue;
                 }
 
-                // Process running containers
+                // Process running/squeezed containers
                 if (remoteContainer.getState() == ContainerState.RUNNING) {
                     if (!rmNode.launchedContainers.contains(containerId)) {
                         // Just launched container. RM knows about it the first time.
@@ -826,10 +844,32 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                     completedContainers.add(remoteContainer);
                 }
             }
+
+            // process containers have been squeezed in this round
+            for (ContainerSqueezeUnit container : statusEvent.getSqueezedContainers()){
+                ContainerId containerId = container.getContainerId();
+
+                // which means this container is RUNNING/SQUEEZE
+                if (rmNode.launchedContainers.contains(containerId)){
+                    if ( !rmNode.squeezedContainers.contains(container)){
+                        rmNode.squeezedContainers.add(container);
+                        newlySqueezedContainers.add(container);
+                    }
+                } else {
+                    // which means the container is a finished container
+                    if (rmNode.squeezedContainers.contains(container))
+                        rmNode.squeezedContainers.remove(container);
+                }
+
+            }
+
+
+            // seems update queue metrics here
             if (newlyLaunchedContainers.size() != 0
-                    || completedContainers.size() != 0) {
+                    || completedContainers.size() != 0
+                    || newlySqueezedContainers.size() != 0) {
                 rmNode.nodeUpdateQueue.add(new UpdatedContainerInfo
-                        (newlyLaunchedContainers, completedContainers));
+                        (newlyLaunchedContainers, completedContainers, newlySqueezedContainers));
             }
             if (rmNode.nextHeartBeat) {
                 rmNode.nextHeartBeat = false;
@@ -921,6 +961,5 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                 this.containersToBeSqueezed.clear();
             }
         }
-
     }
 }

@@ -157,6 +157,8 @@ public class ContainerLaunch implements Callable<Integer> {
         final List<String> command = launchContext.getCommands();
         int ret = -1;
 
+        LOG.debug("in container launcher, command is: " + command);
+
         // CONTAINER_KILLED_ON_REQUEST should not be missed if the container
         // is already at KILLING
         if (container.getContainerState() == ContainerState.KILLING) {
@@ -297,6 +299,8 @@ public class ContainerLaunch implements Callable<Integer> {
                         + "cleanup already called");
                 ret = ExitCode.TERMINATED.getExitCode();
             } else {
+                LOG.debug("Time to launch this  container: " + containerID + " in path: "
+                            + pidFilePath);
                 exec.activateContainer(containerID, pidFilePath);
                 ret = exec.launchContainer(container, nmPrivateContainerScriptPath,
                         nmPrivateTokensPath, user, appIdStr, containerWorkDir,

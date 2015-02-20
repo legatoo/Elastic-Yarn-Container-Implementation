@@ -223,6 +223,23 @@ public class BuilderUtils {
         container.setResource(resource);
         container.setPriority(priority);
         container.setContainerToken(containerToken);
+        container.setIfSpeculative(false);
+        container.setPadding(Resource.newInstance(0, 0));
+        return container;
+    }
+
+    public static Container newContainer(ContainerId containerId, NodeId nodeId,
+                                         String nodeHttpAddress, Resource resource, Priority priority,
+                                         Token containerToken, Resource padding, boolean ifSpeculative) {
+        Container container = recordFactory.newRecordInstance(Container.class);
+        container.setId(containerId);
+        container.setNodeId(nodeId);
+        container.setNodeHttpAddress(nodeHttpAddress);
+        container.setResource(resource);
+        container.setPriority(priority);
+        container.setContainerToken(containerToken);
+        container.setIfSpeculative(ifSpeculative);
+        container.setPadding(padding);
         return container;
     }
 

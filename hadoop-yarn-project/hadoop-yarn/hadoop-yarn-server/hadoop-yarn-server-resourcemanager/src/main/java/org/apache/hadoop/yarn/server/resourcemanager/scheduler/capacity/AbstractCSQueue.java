@@ -27,10 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authorize.AccessControlList;
-import org.apache.hadoop.yarn.api.records.QueueACL;
-import org.apache.hadoop.yarn.api.records.QueueInfo;
-import org.apache.hadoop.yarn.api.records.QueueState;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.factories.RecordFactory;
 import org.apache.hadoop.yarn.factory.providers.RecordFactoryProvider;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.RMNodeLabelsManager;
@@ -65,11 +62,17 @@ public abstract class AbstractCSQueue implements CSQueue {
     RMNodeLabelsManager labelManager;
     String defaultLabelExpression;
     Resource usedResources = Resources.createResource(0, 0);
+
+    //TODO: add squeezedResource here
+    Resource availableSqueezedResource = Resource.newInstance(0, 0);
+    Resource usedSqueezedResource = Resources.createResource(0, 0);
+
     QueueInfo queueInfo;
     Map<String, Float> absoluteCapacityByNodeLabels;
     Map<String, Float> capacitiyByNodeLabels;
     Map<String, Resource> usedResourcesByNodeLabels = new HashMap<String, Resource>();
     Map<String, Float> absoluteMaxCapacityByNodeLabels;
+    Map<String, Float> absoluteMaxCapacityWithSqueezedResource;
     Map<String, Float> maxCapacityByNodeLabels;
 
     Map<QueueACL, AccessControlList> acls =
@@ -159,6 +162,16 @@ public abstract class AbstractCSQueue implements CSQueue {
     @Override
     public synchronized Resource getUsedResources() {
         return usedResources;
+    }
+
+    @Override
+    public synchronized  Resource getUsedSqueezedResources() {
+        return usedSqueezedResource;
+    }
+
+    @Override
+    public synchronized Resource getAvailableSqueezedResource(){
+        return availableSqueezedResource;
     }
 
     public synchronized int getNumContainers() {
@@ -367,6 +380,15 @@ public abstract class AbstractCSQueue implements CSQueue {
                 clusterResource, minimumAllocation);
     }
 
+    synchronized void allocateSqueezedResource(Resource clusterResource,
+                                       Resource resource) {
+        assert  (resource != null);
+
+        Resources.addTo(usedSqueezedResource, resource);
+        Resources.subtractFrom(availableSqueezedResource, resource);
+
+    }
+
     protected synchronized void releaseResource(Resource clusterResource,
                                                 Resource resource, Set<String> nodeLabels) {
         // Update queue metrics
@@ -394,30 +416,25 @@ public abstract class AbstractCSQueue implements CSQueue {
         --numContainers;
     }
 
-    protected synchronized void squeezeResource(Resource clusterResource,
-                                                Resource diff, Set<String> nodeLabels){
+    protected synchronized void releaseSqueezeResource(Resource clusterResource,
+                                                       Resource padding){
+        Resources.subtractFrom(usedSqueezedResource, padding);
+        Resources.addTo(availableSqueezedResource, padding);
+    }
+
+
+    // synchronized
+    protected synchronized void addSqueezeResource(Resource clusterResource, NodeId nodeId,
+              Resource diff, Set<String> nodeLabels){
         // update queue metrics
-        Resources.subtractFrom(usedResources, diff);
 
-        // Update usedResources by labels
-        if (null == nodeLabels || nodeLabels.isEmpty()) {
-            if (!usedResourcesByNodeLabels.containsKey(RMNodeLabelsManager.NO_LABEL)) {
-                usedResourcesByNodeLabels.put(RMNodeLabelsManager.NO_LABEL,
-                        Resources.createResource(0));
-            }
-            Resources.subtractFrom(
-                    usedResourcesByNodeLabels.get(RMNodeLabelsManager.NO_LABEL), diff);
-        } else {
-            for (String label : Sets.intersection(accessibleLabels, nodeLabels)) {
-                if (!usedResourcesByNodeLabels.containsKey(label)) {
-                    usedResourcesByNodeLabels.put(label, Resources.createResource(0));
-                }
-                Resources.subtractFrom(usedResourcesByNodeLabels.get(label), diff);
-            }
-        }
+        // should not update suedResource, but update squeezedResource
+        // if subtract resource from usedResource, the Resource in this cluster is not
+        // constant anymore.
+        Resources.addTo(availableSqueezedResource, diff);
 
-        CSQueueUtils.updateQueueStatistics(resourceCalculator, this, getParent(),
-                clusterResource, minimumAllocation);
+        CSQueueUtils.updateQueueStatisticsAfterSqueeze(resourceCalculator, this, clusterResource,
+                minimumAllocation, nodeId);
     }
 
     @Private
@@ -455,7 +472,7 @@ public abstract class AbstractCSQueue implements CSQueue {
     @Private
     public float getAbsoluteMaximumCapacityByNodeLabel(String label) {
         if (StringUtils.equals(label, RMNodeLabelsManager.NO_LABEL)) {
-            return getAbsoluteMaximumCapacity();
+                return getAbsoluteMaximumCapacity();
         }
 
         if (!absoluteMaxCapacityByNodeLabels.containsKey(label)) {
@@ -464,6 +481,8 @@ public abstract class AbstractCSQueue implements CSQueue {
             return absoluteMaxCapacityByNodeLabels.get(label);
         }
     }
+
+
 
     @Private
     public boolean getReservationContinueLooking() {

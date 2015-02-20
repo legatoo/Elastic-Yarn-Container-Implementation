@@ -338,25 +338,26 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
         nodeHealthStatus.setIsNodeHealthy(healthChecker.isHealthy());
         nodeHealthStatus.setLastHealthReportTime(healthChecker
                 .getLastHealthReportTime());
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Node's health-status : " + nodeHealthStatus.getIsNodeHealthy()
-                    + ", " + nodeHealthStatus.getHealthReport());
-        }
+
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("Node's health-status : " + nodeHealthStatus.getIsNodeHealthy()
+//                    + ", " + nodeHealthStatus.getHealthReport());
+//        }
+
         List<ContainerStatus> containersStatuses = getContainerStatuses();
 
-        //TODO: call container monitor from context
+        // get container Memory statuses from monitor
         List<ContainerSqueezeUnit> containerMemoryStatuses = getContainerMemoryStatuses();
 
 
         boolean ifSqueeze = ((ContainerManagerImpl) context.getContainerManager())
                 .getContainersSqueezer().getIfSqueeze();
+
         List<ContainerSqueezeUnit> squeezedContainers = new ArrayList<ContainerSqueezeUnit>();
         if (ifSqueeze){
+            // get squeezed containers in this round and set squeeze flag to false
             squeezedContainers.addAll( ((ContainerManagerImpl) context.getContainerManager())
                     .getContainersSqueezer().getSqueezedContainersInThisRound());
-
-            ((ContainerManagerImpl) context.getContainerManager())
-                    .getContainersSqueezer().setIfSqueeze(false);
         }
 
         NodeStatus nodeStatus =
@@ -406,11 +407,10 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
 
     @VisibleForTesting
     protected List<ContainerSqueezeUnit> getContainerMemoryStatuses() throws IOException {
-        List<ContainerSqueezeUnit> containerMemoryStatuses = ((ContainerManagerImpl) context.getContainerManager())
+
+        List<ContainerSqueezeUnit> containerMemoryStatuses =
+                ((ContainerManagerImpl) context.getContainerManager())
                 .getContainersMonitor().getContainerResourceUsageStatues();
-//    for(ContainerMemoryStatus cms: containerMemoryStatuses){
-//      LOG.debug("ContainerMemoryStatus: " + cms);
-//    }
 
         return containerMemoryStatuses;
     }
@@ -679,16 +679,18 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                         List<ContainerSqueezeUnit> containersToBeSqueeze = response.getContainersToBeSqueezed();
 
                         if (!containersToBeSqueeze.isEmpty()) {
+                            LOG.debug("Receive squeeze command from RM Periodic Scheculer on: ");
                             for (ContainerSqueezeUnit c : containersToBeSqueeze) {
-                                LOG.debug("Receive from RM Periodic Scheculer " + c);
+                                LOG.debug(c);
                             }
-
+                            // send command to container squeezer
                             dispatcher.getEventHandler().handle((
                                     new CMgrSuqeezeEvent(containersToBeSqueeze,
                                             CMgrSuqeezeEvent.Reason.ON_PERIODICAL_SCHEDULER)
                                     ));
                         } else {
-                            LOG.debug("Receive 0 container to be squeezed.");
+                            // no container needs to be squeezed
+                            //LOG.debug("Receive 0 container to be squeezed.");
                         }
 
 
@@ -714,6 +716,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                                     YarnConfiguration.DEFAULT_RM_NM_HEARTBEAT_INTERVAL_MS :
                                     nextHeartBeatInterval;
                             try {
+                                // heart beat interval
                                 heartbeatMonitor.wait(nextHeartBeatInterval);
                             } catch (InterruptedException e) {
                                 // Do Nothing

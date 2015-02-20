@@ -31,18 +31,18 @@ public class RMNodeStatusEvent extends RMNodeEvent {
   private final List<ContainerStatus> containersCollection;
   private final NodeHeartbeatResponse latestResponse;
   private final List<ApplicationId> keepAliveAppIds;
-  private final List<ContainerSqueezeUnit> containerSqueezeCollection;
+  private final List<ContainerSqueezeUnit> squeezedContainers;
 
   public RMNodeStatusEvent(NodeId nodeId, NodeHealthStatus nodeHealthStatus,
       List<ContainerStatus> collection, List<ApplicationId> keepAliveAppIds,
       NodeHeartbeatResponse latestResponse,
-      List<ContainerSqueezeUnit> containerMemoryStatuses) {
+      List<ContainerSqueezeUnit> squeezedContainers) {
     super(nodeId, RMNodeEventType.STATUS_UPDATE);
     this.nodeHealthStatus = nodeHealthStatus;
     this.containersCollection = collection;
     this.keepAliveAppIds = keepAliveAppIds;
     this.latestResponse = latestResponse;
-    this.containerSqueezeCollection = containerMemoryStatuses;
+    this.squeezedContainers = squeezedContainers;
   }
 
   public NodeHealthStatus getNodeHealthStatus() {
@@ -61,5 +61,5 @@ public class RMNodeStatusEvent extends RMNodeEvent {
     return this.keepAliveAppIds;
   }
 
-  public List<ContainerSqueezeUnit> getContainerToBeSqueezed() {return this.containerSqueezeCollection;}
+  public List<ContainerSqueezeUnit> getSqueezedContainers() {return this.squeezedContainers;}
 }

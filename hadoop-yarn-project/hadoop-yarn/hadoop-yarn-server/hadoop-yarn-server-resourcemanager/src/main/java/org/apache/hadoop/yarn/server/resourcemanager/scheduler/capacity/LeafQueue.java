@@ -787,15 +787,19 @@ public class LeafQueue extends AbstractCSQueue {
                             computeUserLimitAndSetHeadroom(application, clusterResource,
                                     required, requestedNodeLabels);
 
+                    LOG.debug("waht is userlimit here: " + userLimit);
+
                     // Check queue max-capacity limit
                     if (!canAssignToThisQueue(clusterResource, required,
                             labelManager.getLabelsOnNode(node.getNodeID()), application, true)) {
+                        LOG.debug(" Can not assign to this queue.");
                         return NULL_ASSIGNMENT;
                     }
 
                     // Check user limit
                     if (!assignToUser(clusterResource, application.getUser(), userLimit,
                             application, true, requestedNodeLabels)) {
+                        LOG.debug(" Can not assign to this user.");
                         break;
                     }
 
@@ -816,13 +820,26 @@ public class LeafQueue extends AbstractCSQueue {
 
                     // Did we schedule or reserve a container?
                     Resource assigned = assignment.getResource();
+
+                    // if cost node available resource, then update queue metrics
+                    // if a container is speculative(totally of squeezed resource or partically)
+                    // here should send thow much realy availabe resource used to queue metrics
                     if (Resources.greaterThan(
-                            resourceCalculator, clusterResource, assigned, Resources.none())) {
+                            resourceCalculator, clusterResource, assigned, Resources.none())
+                            ||Resources.equals(assigned, Resource.newInstance(-1, 0)) ) {
+
+
+                        if (Resources.equals(assigned, Resource.newInstance(-1, 0)))
+                            assigned.setMemory(0);
 
                         // Book-keeping
                         // Note: Update headroom to account for current allocation too...
                         allocateResource(clusterResource, application, assigned,
                                 labelManager.getLabelsOnNode(node.getNodeID()));
+
+                        Resource usedSqueeze = Resources.subtract(required, assigned);
+                        if (usedSqueeze.getMemory() != 0)
+                            allocateSqueezedResource(clusterResource, application, usedSqueeze);
 
                         // Don't reset scheduling opportunities for non-local assignments
                         // otherwise the app will be delayed for each non-local assignment.
@@ -950,8 +967,12 @@ public class LeafQueue extends AbstractCSQueue {
                                 + getQueueName()
                                 + " usedResources: "
                                 + usedResources
+                                + " usedSqueezedResource: "
+                                + usedSqueezedResource
                                 + " clusterResources: "
                                 + clusterResource
+                                + " availableSqueezeResource: "
+                                + availableSqueezedResource
                                 + " reservedResources: "
                                 + application.getCurrentReservation()
                                 + " currentCapacity "
@@ -969,8 +990,28 @@ public class LeafQueue extends AbstractCSQueue {
             // Otherwise, if any of the label of this node beyond queue limit, we
             // cannot allocate on this node. Consider a small epsilon here.
             if (potentialNewCapacity > getAbsoluteMaximumCapacityByNodeLabel(label) + 1e-4) {
-                canAssign = false;
-                break;
+
+
+                float potentialNewCapacityWithSqueezeSpace =
+                        Resources.divide(resourceCalculator, clusterResource,
+                                potentialTotalCapacity,
+                                Resources.add(
+                                        labelManager.getResourceByLabel(label, clusterResource),
+                                        availableSqueezedResource
+                                        ));
+                LOG.debug(" the new capacity is over the maximum capacity. ");
+                LOG.debug(" new capacity is " + potentialNewCapacity + " max is "
+                        + getAbsoluteCapacityByNodeLabel(label) + " the label is " + label);
+
+                if (potentialNewCapacityWithSqueezeSpace > getAbsoluteMaximumCapacityByNodeLabel(label) + 1e-4) {
+                    canAssign = false;
+                    break;
+                } else {
+                    canAssign = true;
+                    LOG.debug(" the new capacity with squeeze space is under the maximum capacity. ");
+                    LOG.debug(" new capacity is " + potentialNewCapacityWithSqueezeSpace + " max is "
+                            + getAbsoluteCapacityByNodeLabel(label) + " the label is " + label);
+                }
             }
 
             if (LOG.isDebugEnabled()) {
@@ -1036,6 +1077,8 @@ public class LeafQueue extends AbstractCSQueue {
 
         application.setHeadroomProvider(headroomProvider);
 
+        // TODO: hakunami, from the user's view, he doesn't how much
+        // TODO: squeezed resource he uses, he uses resources just like normal
         metrics.setAvailableResourcesToUser(user, headroom);
 
         return userLimit;
@@ -1148,6 +1191,9 @@ public class LeafQueue extends AbstractCSQueue {
                 .greaterThan(resourceCalculator, clusterResource,
                         user.getConsumedResourceByLabel(label),
                         limit)) {
+            LOG.debug(" user usage: " +
+                    user.getConsumedResourceByLabel(label) + " exceeds limit: "
+                    + limit );
             // if enabled, check to see if could we potentially use this node instead
             // of a reserved node if the application has reserved containers
             if (this.reservationsContinueLooking && checkReservations) {
@@ -1219,6 +1265,7 @@ public class LeafQueue extends AbstractCSQueue {
             assigned =
                     assignNodeLocalContainers(clusterResource, nodeLocalResourceRequest,
                             node, application, priority, reservedContainer, needToUnreserve);
+
             if (Resources.greaterThan(resourceCalculator, clusterResource,
                     assigned, Resources.none())) {
                 return new CSAssignment(assigned, NodeType.NODE_LOCAL);
@@ -1369,6 +1416,7 @@ public class LeafQueue extends AbstractCSQueue {
             Resource clusterResource, ResourceRequest offSwitchResourceRequest,
             FiCaSchedulerNode node, FiCaSchedulerApp application, Priority priority,
             RMContainer reservedContainer, boolean needToUnreserve) {
+
         if (canAssign(application, priority, node, NodeType.OFF_SWITCH,
                 reservedContainer)) {
             return assignContainer(clusterResource, node, application, priority,
@@ -1398,6 +1446,9 @@ public class LeafQueue extends AbstractCSQueue {
                     application.getLocalityWaitFactor(priority,
                             scheduler.getNumClusterNodes());
 
+            LOG.debug("canAssign? node: " + node + " type: " + type + " resourceRequest: " +
+                        offSwitchRequest + " required container number: " + requiredContainers);
+
             return ((requiredContainers * localityWaitFactor) < missedOpportunities);
         }
 
@@ -1412,6 +1463,10 @@ public class LeafQueue extends AbstractCSQueue {
         if (type == NodeType.RACK_LOCAL) {
             // 'Delay' rack-local just a little bit...
             long missedOpportunities = application.getSchedulingOpportunities(priority);
+
+            LOG.debug("canAssign? node: " + node + " type: " + type + " resourceRequest: " +
+                    rackLocalRequest + " required container number: " + rackLocalRequest.getNumContainers());
+
             return (
                     Math.min(scheduler.getNumClusterNodes(), getNodeLocalityDelay()) <
                             missedOpportunities
@@ -1424,6 +1479,8 @@ public class LeafQueue extends AbstractCSQueue {
             ResourceRequest nodeLocalRequest =
                     application.getResourceRequest(priority, node.getNodeName());
             if (nodeLocalRequest != null) {
+                LOG.debug("canAssign? node: " + node + " type: " + type + " resourceRequest: " +
+                        nodeLocalRequest + " required container number: " + nodeLocalRequest.getNumContainers());
                 return nodeLocalRequest.getNumContainers() > 0;
             }
         }
@@ -1453,17 +1510,46 @@ public class LeafQueue extends AbstractCSQueue {
         return container;
     }
 
+    private Container getSpeculativeContainer(RMContainer rmContainer,
+                                   FiCaSchedulerApp application, FiCaSchedulerNode node,
+                                   Resource capability, Priority priority, Resource padding,
+                                   boolean ifSpeculative) {
+        return (rmContainer != null) ? rmContainer.getContainer() :
+                createSpeculativeContainer(application, node, capability, priority, padding, ifSpeculative);
+    }
 
+    Container createSpeculativeContainer(FiCaSchedulerApp application, FiCaSchedulerNode node,
+                              Resource capability, Priority priority, Resource padding, boolean ifSpeculative) {
+
+        NodeId nodeId = node.getRMNode().getNodeID();
+        ContainerId containerId = BuilderUtils.newContainerId(application
+                .getApplicationAttemptId(), application.getNewContainerId());
+
+        // Create the speculative container
+        Container container =
+                BuilderUtils.newContainer(containerId, nodeId, node.getRMNode()
+                        .getHttpAddress(), capability, priority, null, padding, ifSpeculative);
+
+        return container;
+    }
+
+
+    // call by NODE_LOCAL assign, RACK_LOCAL assign or DATA_LOCAL assign
     private Resource assignContainer(Resource clusterResource, FiCaSchedulerNode node,
                                      FiCaSchedulerApp application, Priority priority,
                                      ResourceRequest request, NodeType type, RMContainer rmContainer,
                                      boolean needToUnreserve) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("assignContainers: node=" + node.getNodeName()
+            LOG.debug("assign Container: node=" + node.getNodeName()
                     + " application=" + application.getApplicationId()
                     + " priority=" + priority.getPriority()
                     + " request=" + request + " type=" + type
-                    + " needToUnreserve= " + needToUnreserve);
+                    + " needToUnreserve= " + needToUnreserve
+                    + " node available squeezed resource: " + node.getAvailableSqueezedResource()
+                    + " node used squeezed resource: " + node.getUsedSqueezedResource()
+                    + " node available resource: " + node.getAvailableResource()
+                    + " node consumed resource: " + node.getUsedResource()
+                    + " node total resource: " + node.getTotalResource());
         }
 
         // check if the resource request can access the label
@@ -1481,7 +1567,9 @@ public class LeafQueue extends AbstractCSQueue {
 
         Resource capability = request.getCapability();
         Resource available = node.getAvailableResource();
+        Resource availableSqueezedResource = node.getAvailableSqueezedResource();
         Resource totalResource = node.getTotalResource();
+
 
         if (!Resources.fitsIn(capability, totalResource)) {
             LOG.warn("Node : " + node.getNodeID()
@@ -1489,8 +1577,14 @@ public class LeafQueue extends AbstractCSQueue {
                     + " node total capability : " + node.getTotalResource());
             return Resources.none();
         }
+        //assert Resources.greaterThan(
+        //        resourceCalculator, clusterResource, available, Resources.none());
+
+        // should take node available squeezed resource into consideration
         assert Resources.greaterThan(
-                resourceCalculator, clusterResource, available, Resources.none());
+                resourceCalculator, clusterResource,
+                Resources.add(available, availableSqueezedResource), Resources.none()
+        );
 
         // Create the container if necessary
         Container container =
@@ -1514,11 +1608,13 @@ public class LeafQueue extends AbstractCSQueue {
             }
         }
 
-        // Can we allocate a container on this node?
+        // Can we allocate a container on this node without squeezed resource?
         int availableContainers =
                 resourceCalculator.computeAvailableContainers(available, capability);
+
+        // TODO: if not, time to use squeezed resource.
         if (availableContainers > 0) {
-            // Allocate...
+            // Allocate... TODO: fuck you are here
 
             // Did we previously reserve containers at this 'priority'?
             if (rmContainer != null) {
@@ -1545,7 +1641,11 @@ public class LeafQueue extends AbstractCSQueue {
                 }
             }
 
+            container.setIfSpeculative(false);
+            container.setPadding(Resource.newInstance(0,0));
+
             // Inform the application
+            // After this, application has already acquired this container
             RMContainer allocatedContainer =
                     application.allocate(type, node, priority, request, container);
 
@@ -1555,6 +1655,7 @@ public class LeafQueue extends AbstractCSQueue {
             }
 
             // Inform the node
+            // deduct available resource
             node.allocateContainer(allocatedContainer);
 
             LOG.info("assignedContainer" +
@@ -1565,38 +1666,111 @@ public class LeafQueue extends AbstractCSQueue {
 
             return container.getResource();
         } else {
-            // if we are allowed to allocate but this node doesn't have space, reserve it or
-            // if this was an already a reserved container, reserve it again
-            if ((canAllocContainer) || (rmContainer != null)) {
 
-                if (reservationsContinueLooking) {
-                    // we got here by possibly ignoring parent queue capacity limits. If
-                    // the parameter needToUnreserve is true it means we ignored one of
-                    // those limits in the chance we could unreserve. If we are here
-                    // we aren't trying to unreserve so we can't allocate
-                    // anymore due to that parent limit
-                    boolean res = checkLimitsToReserve(clusterResource, application, capability,
-                            needToUnreserve);
+            // TODO: time to use squeezed space
+            LOG.debug("available rsource is not enough for allocate, using squeezed resource.");
+            LOG.debug("Request resource is: " + capability + " available resource is " + available +
+                        " squeezed resource is " + availableSqueezedResource);
+
+            int availableContainersWithSqueezedSpace =
+                    resourceCalculator.computeAvailableContainers(
+                            Resources.add(available, availableSqueezedResource), capability);
+
+            if (availableContainersWithSqueezedSpace > 0){
+                // Did we previously reserve containers at this 'priority'?
+                if (rmContainer != null) {
+                    unreserve(application, priority, node, rmContainer);
+                } else if (this.reservationsContinueLooking
+                        && (!canAllocContainer || needToUnreserve)) {
+                    // need to unreserve some other container first
+                    boolean res = findNodeToUnreserve(clusterResource, node, application,
+                            priority, capability);
                     if (!res) {
+                        return Resources.none();
+                    }
+                } else {
+                    // we got here by possibly ignoring queue capacity limits. If the
+                    // parameter needToUnreserve is true it means we ignored one of those
+                    // limits in the chance we could unreserve. If we are here we aren't
+                    // trying to unreserve so we can't allocate anymore due to that parent
+                    // limit.
+                    if (needToUnreserve) {
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("we needed to unreserve to be able to allocate, skipping");
+                        }
                         return Resources.none();
                     }
                 }
 
-                // Reserve by 'charging' in advance...
-                reserve(application, priority, node, rmContainer, container);
+                // Inform the application
+                container.setIfSpeculative(true);
+                Resource padding = (availableSqueezedResource.getMemory() >= capability.getMemory())?
+                        capability: availableSqueezedResource;
 
-                LOG.info("Reserved container " +
-                        " application=" + application.getApplicationId() +
-                        " resource=" + request.getCapability() +
-                        " queue=" + this.toString() +
-                        " usedCapacity=" + getUsedCapacity() +
-                        " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
-                        " used=" + usedResources +
-                        " cluster=" + clusterResource);
+                container.setPadding(padding);
 
-                return request.getCapability();
+                RMContainer allocatedContainer =
+                        application.allocate(type, node, priority, request, container);
+
+                // Does the application need this resource?
+                if (allocatedContainer == null) {
+                    return Resources.none();
+                }
+
+                // Inform the node
+                // deduct available resource
+                node.allocateContainer(allocatedContainer);
+
+                LOG.info("assigned Container with squeezed space" +
+                        " application attempt=" + application.getApplicationAttemptId() +
+                        " container=" + container +
+                        " queue=" + this +
+                        " clusterResource=" + clusterResource);
+
+                // return how much real node avilable resouce is used
+                if (Resources.equals(container.getResource(), container.getPadding())){
+                    // negative one here means the container is a total speculative container
+                    return Resource.newInstance(-1, 0);
+                } else {
+                    return Resources.subtract(container.getResource(), container.getPadding());
+                }
+
+
+            } else {
+                // if we are allowed to allocate but this node doesn't have space, reserve it or
+                // if this was an already a reserved container, reserve it again
+                if ((canAllocContainer) || (rmContainer != null)) {
+
+                    if (reservationsContinueLooking) {
+                        // we got here by possibly ignoring parent queue capacity limits. If
+                        // the parameter needToUnreserve is true it means we ignored one of
+                        // those limits in the chance we could unreserve. If we are here
+                        // we aren't trying to unreserve so we can't allocate
+                        // anymore due to that parent limit
+                        boolean res = checkLimitsToReserve(clusterResource, application, capability,
+                                needToUnreserve);
+                        if (!res) {
+                            return Resources.none();
+                        }
+                    }
+
+                    // Reserve by 'charging' in advance...
+                    reserve(application, priority, node, rmContainer, container);
+
+                    LOG.info("Reserved container " +
+                            " application=" + application.getApplicationId() +
+                            " resource=" + request.getCapability() +
+                            " queue=" + this.toString() +
+                            " usedCapacity=" + getUsedCapacity() +
+                            " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
+                            " used=" + usedResources +
+                            " cluster=" + clusterResource);
+
+                    return request.getCapability();
+                }
+                return Resources.none();
             }
-            return Resources.none();
+
         }
     }
 
@@ -1617,6 +1791,7 @@ public class LeafQueue extends AbstractCSQueue {
 
     private boolean unreserve(FiCaSchedulerApp application, Priority priority,
                               FiCaSchedulerNode node, RMContainer rmContainer) {
+        LOG.debug("what's the meaning of reserve and unreserve?");
         // Done with the reservation?
         if (application.unreserve(node, priority)) {
             node.unreserveResource(application);
@@ -1631,8 +1806,8 @@ public class LeafQueue extends AbstractCSQueue {
 
     @Override
     public void completedContainer(Resource clusterResource,
-                                   FiCaSchedulerApp application, FiCaSchedulerNode node, RMContainer rmContainer,
-                                   ContainerStatus containerStatus, RMContainerEventType event, CSQueue childQueue,
+            FiCaSchedulerApp application, FiCaSchedulerNode node, RMContainer rmContainer,
+            ContainerStatus containerStatus, RMContainerEventType event, CSQueue childQueue,
                                    boolean sortQueues) {
         if (application != null) {
 
@@ -1658,12 +1833,31 @@ public class LeafQueue extends AbstractCSQueue {
 
                 // Book-keeping
                 if (removed) {
-                    releaseResource(clusterResource, application,
-                            container.getResource(),
-                            labelManager.getLabelsOnNode(node.getNodeID()));
+                    if (container.getIfSpeculative()){
+                        // if the container is a speculative container
+                        // add real cost of avilabe resource back to avilable
+                        // add cost of squeezed resource back to squeezed resource
+                        releaseResource(clusterResource, application,
+                                Resources.subtract(container.getResource(), container.getPadding()),
+                                labelManager.getLabelsOnNode(node.getNodeID()));
+
+                        // update how much squeezed resource used in queue and user
+                        releaseSqueezeResource(clusterResource, application, container.getPadding());
+                    } else {
+                        releaseResource(clusterResource, application,
+                                container.getResource(),
+                                labelManager.getLabelsOnNode(node.getNodeID()));
+                    }
+
+
                     LOG.info("completedContainer" +
                             " container=" + container +
                             " queue=" + this +
+                            " usedCapacity=" + getUsedCapacity() +
+                            " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
+                            " used=" + usedResources +
+                            " available squeezed=" + availableSqueezedResource +
+                            " used squeezed=" + usedSqueezedResource +
                             " cluster=" + clusterResource);
                 }
             }
@@ -1679,36 +1873,48 @@ public class LeafQueue extends AbstractCSQueue {
     @Override
     public void squeezeContainer(Resource clusterResource, FiCaSchedulerNode node, FiCaSchedulerApp application,
                                  RMContainer rmContainer, ContainerSqueezeUnit containerSqueezeUnit,
-                                 RMContainerEventType event) {
+                                 RMContainerEventType event, CSQueue childQueue,
+                                 boolean sortQueues) {
         if (application != null) {
             // Careful! Locking order is important!
             synchronized (this) {
+                Container container = rmContainer.getContainer();
 
                 // update node
+                // add squeezed resource in node
+                // keep record in node
                 node.squeezeContainer(rmContainer, containerSqueezeUnit);
 
                 // update leaf queue
                 Resource diff = containerSqueezeUnit.getDiff();
-                squeezeResource(clusterResource, application, diff,
+                squeezeResource(clusterResource, node.getNodeID(),application, diff,
                         labelManager.getLabelsOnNode(node.getNodeID()));
 
-                LOG.info("squeezedContainer" +
-                        " containerId=" + containerSqueezeUnit.getContainerId() +
-                        " queue=" + this +
-                        " cluster=" + clusterResource);
+//                LOG.info("squeezedContainer" +
+//                        " container=" + container +
+//                        " queue=" + this +
+//                        " usedCapacity=" + getUsedCapacity() +
+//                        " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
+//                        " used=" + usedResources +
+//                        " available squeezed=" + availableSqueezedResource +
+//                        " used squeezed=" + usedSqueezedResource +
+//                        " cluster=" + clusterResource);
 
             }
 
             // Inform the parent queue _outside_ of the leaf-queue lock
             getParent().squeezeContainer(clusterResource, node, application,
-                    rmContainer, containerSqueezeUnit, event);
+                    rmContainer, containerSqueezeUnit, event, this, sortQueues);
 
         }
     }
 
+
     synchronized void allocateResource(Resource clusterResource,
                                        SchedulerApplicationAttempt application, Resource resource,
                                        Set<String> nodeLabels) {
+
+        // how to deal with queue metrics
         super.allocateResource(clusterResource, resource, nodeLabels);
 
         // Update user metrics
@@ -1730,6 +1936,30 @@ public class LeafQueue extends AbstractCSQueue {
         }
     }
 
+    synchronized void allocateSqueezedResource(Resource clusterResource,
+                                               SchedulerApplicationAttempt application, Resource resource){
+        super.allocateSqueezedResource(clusterResource, resource);
+
+        // Update user metrics
+        String userName = application.getUser();
+        User user = getUser(userName);
+        user.alloateSqueezedResource(resource);
+        // Note this is a bit unconventional since it gets the object and modifies
+        // it here, rather then using set routine
+        //Resources.subtractFrom(application.getHeadroom(), resource); // headroom
+        //metrics.setAvailableResourcesToUser(userName, application.getHeadroom());
+
+        if (LOG.isDebugEnabled()) {
+            LOG.info(getQueueName() +
+                            " user=" + userName +
+                            " used squeeze resource=" + usedSqueezedResource + " available squeeze=" + availableSqueezedResource +
+                            " headroom = " + application.getHeadroom() +
+                            " user-resources=" + user.getTotalConsumedResources()
+            );
+        }
+
+    }
+
     synchronized void releaseResource(Resource clusterResource,
                                       FiCaSchedulerApp application, Resource resource, Set<String> nodeLabels) {
         super.releaseResource(clusterResource, resource, nodeLabels);
@@ -1746,22 +1976,38 @@ public class LeafQueue extends AbstractCSQueue {
                 " user=" + userName + " user-resources=" + user.getTotalConsumedResources());
     }
 
-    synchronized  void squeezeResource(Resource clusterResource, FiCaSchedulerApp application,
-                                       Resource diff, Set<String> nodeLabels){
-        // TODO: update cluster resource
-        super.squeezeResource(clusterResource, diff, nodeLabels);
+    synchronized void releaseSqueezeResource(Resource clusterResource,
+                                             FiCaSchedulerApp application, Resource padding){
+        super.releaseSqueezeResource(clusterResource, padding);
+
+        // Update user metrics
+        String userName = application.getUser();
+        User user = getUser(userName);
+        user.releaseSpeculativeContaienr(padding);
+
+        LOG.info(getQueueName() +
+                " usedSqueezed=" + usedSqueezedResource + " availableSqueezed=" + availableSqueezedResource +
+                " user=" + userName + " user-consumed=" + user.getTotalConsumedResources());
+    }
+
+
+    synchronized  void squeezeResource(Resource clusterResource, NodeId nodeId,
+                FiCaSchedulerApp application,
+                Resource diff, Set<String> nodeLabels){
+        // update cluster resource
+        super.addSqueezeResource(clusterResource, nodeId, diff, nodeLabels);
 
         String userName = application.getUser();
         User user = getUser(userName);
         user.squeezeContianer(diff, nodeLabels);
 
         // update user's headroom
-        // Resources.addTo(application.getHeadroom(), diff);
-        metrics.setAvailableResourcesToUser(userName, application.getHeadroom());
+        //metrics.setAvailableResourcesToUser(userName, application.getHeadroom());
 
         LOG.info("After squeeze: " + getQueueName() +
-                " used=" + usedResources + " numContainers=" + numContainers +
-                " user=" + userName + " user-resources=" + user.getTotalConsumedResources());
+                " used=" + usedResources + "  queue usedSqueeze=" + usedSqueezedResource +
+                " queue available squeezed=" + availableSqueezedResource +
+                " user=" + userName + " user-consumed=" + user.getTotalConsumedResources());
 
     }
 
@@ -1805,13 +2051,25 @@ public class LeafQueue extends AbstractCSQueue {
     @VisibleForTesting
     public static class User {
         Resource consumed = Resources.createResource(0, 0);
+
+        // squeezed resource of this user
+        Resource consumedSqueezed = Resources.createResource(0, 0);
+        Resource availableSqueezedResource = Resource.newInstance(0, 0);
         Map<String, Resource> consumedByLabel = new HashMap<String, Resource>();
         int pendingApplications = 0;
         int activeApplications = 0;
 
+        // this is real resource consumation
         public Resource getTotalConsumedResources() {
             return consumed;
         }
+
+        // consumed + consumed squeezed
+        public Resource getFullConsumed() {
+            return Resources.add(consumed, consumedSqueezed);
+        }
+
+        public Resource getConsumedSqueezed() { return consumedSqueezed; }
 
         public Resource getConsumedResourceByLabel(String label) {
             Resource r = consumedByLabel.get(label);
@@ -1871,6 +2129,13 @@ public class LeafQueue extends AbstractCSQueue {
             }
         }
 
+        public synchronized void alloateSqueezedResource(Resource resource){
+            assert (resource!= null);
+
+            Resources.subtractFrom(availableSqueezedResource, resource);
+            Resources.addTo(consumedSqueezed, resource);
+        }
+
         public synchronized void releaseContainer(Resource resource, Set<String> nodeLabels) {
             Resources.subtractFrom(consumed, resource);
 
@@ -1892,25 +2157,15 @@ public class LeafQueue extends AbstractCSQueue {
             }
         }
 
-        public synchronized void squeezeContianer(Resource diff, Set<String> nodeLabels){
-            Resources.subtractFrom(consumed, diff);
+        public synchronized void releaseSpeculativeContaienr(Resource resource) {
+            Resources.subtractFrom(consumedSqueezed, resource);
+            Resources.addTo(availableSqueezedResource, resource);
+        }
 
-            // Update usedResources by labels
-            if (nodeLabels == null || nodeLabels.isEmpty()) {
-                if (!consumedByLabel.containsKey(RMNodeLabelsManager.NO_LABEL)) {
-                    consumedByLabel.put(RMNodeLabelsManager.NO_LABEL,
-                            Resources.createResource(0));
-                }
-                Resources.subtractFrom(
-                        consumedByLabel.get(RMNodeLabelsManager.NO_LABEL), diff);
-            } else {
-                for (String label : nodeLabels) {
-                    if (!consumedByLabel.containsKey(label)) {
-                        consumedByLabel.put(label, Resources.createResource(0));
-                    }
-                    Resources.subtractFrom(consumedByLabel.get(label), diff);
-                }
-            }
+        public synchronized void squeezeContianer(Resource diff, Set<String> nodeLabels){
+            // this is the amount of resource used by user
+            //Resources.subtractFrom(consumed, diff);
+            Resources.addTo(availableSqueezedResource, diff);
 
         }
     }

@@ -152,7 +152,7 @@ public interface RMNode {
    * Get the flag of squeeze operation
    * @return squeeze operation flag
    */
-  public AtomicBoolean getIfSqueeze();
+  public boolean getIfSqueeze();
 
   public void setIfSqueeze(boolean flag);
 }

@@ -97,6 +97,10 @@ message ContainerProto {
     optional ResourceProto resource = 4;
     optional PriorityProto priority = 5;
     optional hadoop.common.TokenProto container_token = 6;
+    optional bool if_speculative = 7 [default = false];
+    // for a speculative container, this is how much squeezed space it used
+    optional ResourceProto padding = 8;
+
     // it is not a good option to add resource diff here in Container:
     // diff is dynamic based on different threshold, if put it here, Container is
     // static and cant be changed in the future

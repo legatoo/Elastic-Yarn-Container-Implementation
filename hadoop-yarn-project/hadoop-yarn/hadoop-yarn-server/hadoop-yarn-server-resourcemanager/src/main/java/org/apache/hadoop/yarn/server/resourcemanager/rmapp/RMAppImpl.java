@@ -910,7 +910,7 @@ public class RMAppImpl implements RMApp, Recoverable {
   private static final class StartAppAttemptTransition extends RMAppTransition {
     @Override
     public void transition(RMAppImpl app, RMAppEvent event) {
-      app.createAndStartNewAttempt(false);
+        app.createAndStartNewAttempt(false);
     };
   }
 

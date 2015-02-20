@@ -527,6 +527,8 @@ abstract public class Shell {
       while(line != null) { 
         line = inReader.readLine();
       }
+        LOG.debug("inReader reads line: " + line);
+
       // wait for the process to finish and check the exit code
       exitCode  = process.waitFor();
       // make sure that the error thread exits

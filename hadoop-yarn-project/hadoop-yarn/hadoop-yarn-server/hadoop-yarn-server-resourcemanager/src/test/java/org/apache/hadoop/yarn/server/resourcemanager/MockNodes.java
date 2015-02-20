@@ -127,8 +127,8 @@ public class MockNodes {
     }
 
     @Override
-    public AtomicBoolean getIfSqueeze() {
-      return null;
+    public boolean getIfSqueeze() {
+      return false;
     }
 
     @Override
