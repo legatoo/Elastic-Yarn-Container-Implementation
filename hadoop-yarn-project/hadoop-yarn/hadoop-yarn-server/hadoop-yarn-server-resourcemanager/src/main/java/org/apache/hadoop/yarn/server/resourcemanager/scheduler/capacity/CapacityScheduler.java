@@ -944,17 +944,20 @@ public class CapacityScheduler extends
         // Process the newly squeezed contaienrs
         for ( ContainerSqueezeUnit squeezedContainer : newlySqueezedContainers){
 
-            //TODO: 1. update node metrics
             ContainerId containerId = squeezedContainer.getContainerId();
             LOG.debug("Container SQUEEZED: " + containerId);
             squeezedContainer(squeezedContainer, RMContainerEventType.SQUEEZE);
         }
 
-        // Now node data structures are upto date and ready for scheduling.
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Node being looked for scheduling " + nm
-                    + " availableResource: " + node.getAvailableResource());
+            LOG.debug("HAKUNAMI-->Node being looked for scheduling " + node.getNodeName()
+                    + " node available squeezed resource: " + node.getAvailableSqueezedResource()
+                    + " node used squeezed resource: " + node.getUsedSqueezedResource()
+                    + " node available resource: " + node.getAvailableResource()
+                    + " node consumed resource: " + node.getUsedResource()
+                    + " node total resource: " + node.getTotalResource());
         }
+
     }
 
     /**
@@ -1008,16 +1011,18 @@ public class CapacityScheduler extends
         if (node.getReservedContainer() == null) {
 
             if (calculator.computeAvailableContainers(node.getAvailableResource(),
+                    minimumAllocation) > 0
+                    || calculator.computeAvailableContainers(node.getAvailableSqueezedResource(),
                     minimumAllocation) > 0) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Trying to schedule on node: " + node.getNodeName() +
                             ", available: " + node.getAvailableResource());
                 }
+                // assign containers here
                 root.assignContainers(clusterResource, node, false);
             } else {
                 // TODO: take squeezed resource into consideration here
-                LOG.debug(" available resource is not enough. " +
-                        "TODO: take squeezed resource into consideration here");
+                LOG.debug(" available/squeezed resource is not enough. " );
             }
         } else {
             LOG.info("Skipping scheduling since node " + node.getNodeID() +
@@ -1257,6 +1262,7 @@ public class CapacityScheduler extends
         }
 
         Container container = rmContainer.getContainer();
+        ContainerId containerId = container.getId();
 
         // Get the application for the finished container
         FiCaSchedulerApp application =
@@ -1274,8 +1280,21 @@ public class CapacityScheduler extends
 
         // Inform the queue, start from LeafQueue
         LeafQueue queue = (LeafQueue) application.getQueue();
+
+        // TODO: when this container is currently squeezed??
+        Resource padding = node.ifSqueezedContainer(containerId);
+
+        if(Resources.greaterThan(calculator, clusterResource, padding, Resources.none())){
+            LOG.debug("Squeezed container is finishing. update available squeezed resource.");
+            // this ccompleted container is squeezed, remember to deduct squeezed resource
+            queue.completedSqueezedContainer(clusterResource, node,application,
+                    rmContainer, padding);
+        }
+
         queue.completedContainer(clusterResource, application, node,
                 rmContainer, containerStatus, event, null, true);
+
+
 
         LOG.info("Application attempt " + application.getApplicationAttemptId()
                 + " released container " + container.getId() + " on node: " + node

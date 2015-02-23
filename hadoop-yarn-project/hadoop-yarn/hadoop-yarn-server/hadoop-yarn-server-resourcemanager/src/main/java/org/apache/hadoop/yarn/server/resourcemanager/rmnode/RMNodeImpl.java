@@ -841,6 +841,8 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                 } else {
                     // A finished container
                     rmNode.launchedContainers.remove(containerId);
+                    if (rmNode.squeezedContainers.contains(containerId))
+                        rmNode.squeezedContainers.remove(containerId);
                     completedContainers.add(remoteContainer);
                 }
             }

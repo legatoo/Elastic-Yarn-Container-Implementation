@@ -430,7 +430,7 @@ public class ResourceTrackerService extends AbstractService implements
         List<ContainerSqueezeUnit> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
 
         if( !containerMemoryStatuses.isEmpty()) {
-            LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: ");
+            LOG.debug("Receive " + containerMemoryStatuses.size() + " container memory usage from NM: " + nodeId);
 
             // Send container memory statuses to periodic scheduler
             this.rmContext.getDispatcher().getEventHandler().handle(

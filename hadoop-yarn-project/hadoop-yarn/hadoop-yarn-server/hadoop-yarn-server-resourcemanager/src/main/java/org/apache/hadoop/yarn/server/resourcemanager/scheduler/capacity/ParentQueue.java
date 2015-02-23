@@ -418,6 +418,7 @@ public class ParentQueue extends AbstractCSQueue {
         // if our queue cannot access this node, just return
         if (!SchedulerUtils.checkQueueAccessToNode(accessibleLabels,
                 labelManager.getLabelsOnNode(node.getNodeID()))) {
+            LOG.debug("in parent, queue can not access node.");
             return assignment;
         }
 
@@ -432,6 +433,7 @@ public class ParentQueue extends AbstractCSQueue {
 
             // Are we over maximum-capacity for this queue?
             if (!canAssignToThisQueue(clusterResource, nodeLabels)) {
+                LOG.debug("in parent, can not assign to this queue.");
                 // check to see if we could if we unreserve first
                 localNeedToUnreserve = assignToQueueIfUnreserve(clusterResource);
                 if (!localNeedToUnreserve) {
@@ -561,8 +563,10 @@ public class ParentQueue extends AbstractCSQueue {
 
     private boolean canAssign(Resource clusterResource, FiCaSchedulerNode node) {
         return (node.getReservedContainer() == null) &&
-                Resources.greaterThanOrEqual(resourceCalculator, clusterResource,
-                        node.getAvailableResource(), minimumAllocation);
+                (Resources.greaterThanOrEqual(resourceCalculator, clusterResource,
+                        node.getAvailableResource(), minimumAllocation) ||
+                        Resources.greaterThanOrEqual(resourceCalculator, clusterResource,
+                                node.getAvailableSqueezedResource(), minimumAllocation));
     }
 
     private synchronized CSAssignment assignContainersToChildQueues(Resource cluster,
@@ -580,6 +584,7 @@ public class ParentQueue extends AbstractCSQueue {
                         + " stats: " + childQueue);
             }
             assignment = childQueue.assignContainers(cluster, node, needToUnreserve);
+
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Assigned to queue: " + childQueue.getQueuePath() +
                         " stats: " + childQueue + " --> " +
@@ -711,6 +716,22 @@ public class ParentQueue extends AbstractCSQueue {
                 parent.squeezeContainer(clusterResource, node, application,
                         rmContainer, containerSqueezeUnit, event, this, sortQueues);
             }
+        }
+    }
+
+    @Override
+    public void completedSqueezedContainer(Resource clusterResource, FiCaSchedulerNode node,
+              FiCaSchedulerApp application, RMContainer rmContainer, Resource squeezed) {
+        synchronized (this){
+            super.completeSqueezedContainer(clusterResource, squeezed);
+
+            // Inform the parent
+            if (parent != null) {
+                // complete my parent
+                parent.completedSqueezedContainer(clusterResource, node,
+                        application, rmContainer, squeezed);
+            }
+
         }
     }
 

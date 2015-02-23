@@ -74,6 +74,13 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
     }
 
+    public synchronized Collection<ContainerId> getCurrentSqueezedContainers(){
+        if (currentSqueezedContainers.isEmpty())
+            return null;
+        else
+            return currentSqueezedContainers.keySet();
+    }
+
     // when operating node squeeze, stop receive heartbeat information
     // set to true for testing purpose
     private AtomicBoolean operating = new AtomicBoolean(true);
@@ -87,7 +94,7 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
             // simply return all non-master containers for testing
             // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
-            int size = (int)(runningContainerMemoryStatus.size()/4);
+            int size = (int)(runningContainerMemoryStatus.size());
             int count = 0;
 
             while (!runningContainerMemoryStatus.isEmpty()) {
@@ -103,7 +110,6 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
                     continue;
 
                 synchronized (currentSqueezedContainers){
-                    LOG.debug("debug-> running container in PS: " + cms);
                     if( !currentSqueezedContainers.containsKey(containerId)) {
 
                         LOG.debug("Periodic scheduler is picking container to be squeeze: " + cms);
@@ -245,6 +251,7 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
                         if (currentSqueezedContainers.containsKey(containerMemoryStatus.getContainerId())) {
                             continue;
                         } else {
+                            // update contaienr memory stastus
                             if (runningContainerMemoryStatus.contains(containerMemoryStatus)) {
                                 LOG.debug("Updating resource usage of container  " + containerMemoryStatus.getContainerId());
                                 runningContainerMemoryStatus.remove(containerMemoryStatus);

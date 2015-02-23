@@ -679,7 +679,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                         List<ContainerSqueezeUnit> containersToBeSqueeze = response.getContainersToBeSqueezed();
 
                         if (!containersToBeSqueeze.isEmpty()) {
-                            LOG.debug("Receive squeeze command from RM Periodic Scheculer on: ");
+                            LOG.debug("Receive squeeze command from RM Periodic Scheculer on : " + nodeId);
                             for (ContainerSqueezeUnit c : containersToBeSqueeze) {
                                 LOG.debug(c);
                             }

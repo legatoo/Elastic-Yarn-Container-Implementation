@@ -98,6 +98,7 @@ public class ContainerSqueezer extends AbstractService
 
                 break;
             case CONTAINER_RECOVER:
+                // TODO
                 break;
 
         }

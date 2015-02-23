@@ -1127,6 +1127,13 @@ public class ContainerManagerImpl extends CompositeService implements
                         .getContainersToBeSqueezed()){
                     // The event below will be toke by ContainerEventDispatcher
                     // aka, ContainerImpl's handle function
+
+                    // make sure this container is currently on this node
+                    if (!ContainerManagerImpl.this.context.getContainers()
+                            .containsKey(squeeze.getContainerId())){
+                        continue;
+                    }
+
                     this.dispatcher.getEventHandler().handle((
                             new ContainerSqueezeEvent(squeeze.getContainerId(),
                                     ContainerEventType.CONTAINER_SQUEEZE,

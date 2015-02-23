@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.yarn.util.resource;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability.Unstable;
 import org.apache.hadoop.yarn.api.records.Resource;
@@ -26,7 +28,8 @@ import org.apache.hadoop.yarn.util.Records;
 @InterfaceAudience.LimitedPrivate({"YARN", "MapReduce"})
 @Unstable
 public class Resources {
-  
+    private static final Log LOG = LogFactory.getLog(Resources.class);
+
   // Java doesn't have const :(
   private static final Resource NONE = new Resource() {
 
@@ -118,6 +121,7 @@ public class Resources {
   }
 
   public static Resource addTo(Resource lhs, Resource rhs) {
+
     lhs.setMemory(lhs.getMemory() + rhs.getMemory());
     lhs.setVirtualCores(lhs.getVirtualCores() + rhs.getVirtualCores());
     return lhs;
@@ -130,6 +134,7 @@ public class Resources {
   public static Resource subtractFrom(Resource lhs, Resource rhs) {
     lhs.setMemory(lhs.getMemory() - rhs.getMemory());
     lhs.setVirtualCores(lhs.getVirtualCores() - rhs.getVirtualCores());
+//      LOG.debug("subtract from rhs: " + rhs);
     return lhs;
   }
 

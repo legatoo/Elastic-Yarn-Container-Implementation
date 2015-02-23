@@ -416,6 +416,11 @@ public abstract class AbstractCSQueue implements CSQueue {
         --numContainers;
     }
 
+    protected synchronized void completeSqueezedContainer(Resource clusterResource, Resource resource){
+        Resources.subtractFrom(availableSqueezedResource, resource);
+        // TODO: if available squeezed resource is under 0
+    }
+
     protected synchronized void releaseSqueezeResource(Resource clusterResource,
                                                        Resource padding){
         Resources.subtractFrom(usedSqueezedResource, padding);

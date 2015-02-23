@@ -161,7 +161,7 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
                     + container.getId().getApplicationAttemptId()
                     + " container=" + container.getId() + " host="
                     + container.getNodeId().getHost() + "container speculative: "
-                    + container.getIfSpeculative() + "container capacity: " + container.getResource()
+                    + container.getIfSpeculative() + " container capacity: " + container.getResource()
                     +" container padding: " + container.getPadding() + " node type=" + type);
         }
         RMAuditLogger.logSuccess(getUser(),

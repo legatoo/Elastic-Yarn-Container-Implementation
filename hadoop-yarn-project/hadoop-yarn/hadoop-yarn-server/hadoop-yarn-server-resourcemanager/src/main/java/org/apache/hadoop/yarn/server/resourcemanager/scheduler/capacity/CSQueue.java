@@ -244,6 +244,10 @@ public interface CSQueue
                                    boolean sortQueues);
 
 
+    public void completedSqueezedContainer(Resource clusterResource,
+                                    FiCaSchedulerNode node, FiCaSchedulerApp application,
+                                   RMContainer container, Resource squeezed);
+
     /**
      * A container assigned to the queue has been squeezed
      *
