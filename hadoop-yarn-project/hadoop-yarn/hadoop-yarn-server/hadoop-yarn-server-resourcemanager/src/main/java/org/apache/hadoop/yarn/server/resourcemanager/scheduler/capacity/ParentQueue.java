@@ -585,16 +585,20 @@ public class ParentQueue extends AbstractCSQueue {
             }
             assignment = childQueue.assignContainers(cluster, node, needToUnreserve);
 
+            Resource assigned = assignment.getResource();
+
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Assigned to queue: " + childQueue.getQueuePath() +
                         " stats: " + childQueue + " --> " +
                         assignment.getResource() + ", " + assignment.getType());
             }
 
-            // If we do assign, remove the queue and re-insert in-order to re-sort
+            // If we do assign (normal or speculative),
+            // remove the queue and re-insert in-order to re-sort
             if (Resources.greaterThan(
                     resourceCalculator, cluster,
-                    assignment.getResource(), Resources.none())) {
+                    assignment.getResource(), Resources.none()) ||
+                    assigned.getMemory() == -1) {
                 // Remove and re-insert to sort
                 iter.remove();
                 LOG.info("Re-sorting assigned queue: " + childQueue.getQueuePath() +
@@ -605,6 +609,9 @@ public class ParentQueue extends AbstractCSQueue {
                 }
                 break;
             }
+
+
+
         }
 
         return assignment;

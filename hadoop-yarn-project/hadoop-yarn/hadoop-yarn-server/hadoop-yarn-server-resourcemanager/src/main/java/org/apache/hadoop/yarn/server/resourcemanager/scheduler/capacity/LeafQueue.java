@@ -1708,6 +1708,7 @@ public class LeafQueue extends AbstractCSQueue {
                             Resources.add(available, availableSqueezedResource), capability);
 
             if (availableContainersWithSqueezedSpace > 0){
+
                 // Did we previously reserve containers at this 'priority'?
                 if (rmContainer != null) {
                     unreserve(application, priority, node, rmContainer);
@@ -1805,7 +1806,7 @@ public class LeafQueue extends AbstractCSQueue {
                     }
 
                     // Reserve by 'charging' in advance...
-                    reserve(application, priority, node, rmContainer, container);
+                    //reserve(application, priority, node, rmContainer, container);
 
                     LOG.info("Reserved container " +
                             " application=" + application.getApplicationId() +
@@ -1860,6 +1861,7 @@ public class LeafQueue extends AbstractCSQueue {
 
     public void completedSqueezedContainer(Resource clusterResource, FiCaSchedulerNode node, FiCaSchedulerApp application,
               RMContainer rmContainer, Resource squeezed){
+        LOG.debug("squeezed container is going to complete. squeeze size is ");
 
         synchronized (this){
             node.completeSqueezedContainer(squeezed);
@@ -1960,15 +1962,6 @@ public class LeafQueue extends AbstractCSQueue {
                 squeezeResource(clusterResource, node.getNodeID(),application, diff,
                         labelManager.getLabelsOnNode(node.getNodeID()));
 
-//                LOG.info("squeezedContainer" +
-//                        " container=" + container +
-//                        " queue=" + this +
-//                        " usedCapacity=" + getUsedCapacity() +
-//                        " absoluteUsedCapacity=" + getAbsoluteUsedCapacity() +
-//                        " used=" + usedResources +
-//                        " available squeezed=" + availableSqueezedResource +
-//                        " used squeezed=" + usedSqueezedResource +
-//                        " cluster=" + clusterResource);
 
             }
 
@@ -2000,7 +1993,7 @@ public class LeafQueue extends AbstractCSQueue {
             LOG.info(getQueueName() +
                             " user=" + userName +
                             " used=" + usedResources + " numContainers=" + numContainers +
-                            " headroom = " + application.getHeadroom() +
+                            " application headroom = " + application.getHeadroom() +
                             " user-resources=" + user.getTotalConsumedResources()
             );
         }

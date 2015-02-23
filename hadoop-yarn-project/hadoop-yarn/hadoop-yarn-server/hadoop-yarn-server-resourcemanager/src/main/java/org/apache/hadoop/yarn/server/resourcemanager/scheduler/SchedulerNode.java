@@ -173,7 +173,7 @@ public abstract class SchedulerNode {
 
             LOG.info("Assigned one speculative container " + container.getId() +
                     " of capacity " + container.getResource() + " on host " + rmNode.getNodeAddress()
-                    + ", which has " + rmContainer.getContainer().getPadding() + " padding resource and cost"
+                    + ", which has " + container.getPadding() + " padding resource and cost"
                     + realCost +
                     " available resources. current available resource is "
                     + getAvailableResource() + " current used squeezed resource is " + getUsedSqueezedResource()
@@ -293,6 +293,7 @@ public abstract class SchedulerNode {
 
     public synchronized void completeSqueezedContainer(Resource squeeze){
         deductAvailableSqueezedResource(squeeze);
+
         if ( availableSqueezedResource.getMemory() < 0){
             // TODO: if available squeezed resource is under 0
             LOG.warn("available squeezed resource is under 0. Need to kill " +
@@ -314,11 +315,14 @@ public abstract class SchedulerNode {
     /* remove the containers from the nodemanger */
         if (null != launchedContainers.remove(container.getId())) {
 
-            if (squeezedContainers.containsKey(container.getId()))
+            if (squeezedContainers.containsKey(container.getId())) {
                 squeezedContainers.remove(container.getId());
+                numSqueezedContainers--;
+            }
 
             if (speculativeContainers.containsKey(container.getId())){
                 speculativeContainers.remove(container.getId());
+                numSpeculativeContainers--;
             }
 
             updateResource(container);
@@ -347,7 +351,8 @@ public abstract class SchedulerNode {
             addAvailableSqueezedResource(containerSqueezeUnit.getDiff());
 
             LOG.debug("Add squeeze diff " + containerSqueezeUnit.getDiff() + " from " +
-                    containerSqueezeUnit.getContainerId() + " to node resource. ");
+                    containerSqueezeUnit.getContainerId() + " to node resource. Now avaiable squeeze resource" +
+                    " on node is " + this.getAvailableSqueezedResource() );
         }
 
         LOG.debug("Current available squeezed resource is " + getAvailableSqueezedResource());

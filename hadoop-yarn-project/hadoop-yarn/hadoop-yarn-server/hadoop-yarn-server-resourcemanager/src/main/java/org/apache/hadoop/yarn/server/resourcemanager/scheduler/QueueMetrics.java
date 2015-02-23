@@ -367,7 +367,12 @@ public class QueueMetrics implements MetricsSource {
      */
 
     public synchronized void setAvailableSqueezedResourcesToQueue(NodeId nodeId, Resource resource){
-        squeezedMBInNodes.put(nodeId, resource);
+        if ( !squeezedMBInNodes.containsKey(nodeId)) {
+            squeezedMBInNodes.put(nodeId, resource);
+        } else {
+            squeezedMBInNodes.remove(nodeId);
+            squeezedMBInNodes.put(nodeId, resource);
+        }
 
     }
 

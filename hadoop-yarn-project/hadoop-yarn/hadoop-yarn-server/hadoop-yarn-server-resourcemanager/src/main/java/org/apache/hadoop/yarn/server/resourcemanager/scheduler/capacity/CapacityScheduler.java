@@ -1242,7 +1242,7 @@ public class CapacityScheduler extends
                 rmContainer, containerSqueezeUnit, event, null, true);
 
         LOG.info("Application attempt " + application.getApplicationAttemptId()
-                + " squeezed container " + container.getId() + " on node: " + node
+                + " squeezed container " + container.getId() + " on node: " + node.getNodeID()
                 + " node available resource " + node.getAvailableResource()
                 + " node used resource " + node.getUsedResource()
                 + " node squeezed resource " + node.getAvailableSqueezedResource()
@@ -1284,7 +1284,8 @@ public class CapacityScheduler extends
         // TODO: when this container is currently squeezed??
         Resource padding = node.ifSqueezedContainer(containerId);
 
-        if(Resources.greaterThan(calculator, clusterResource, padding, Resources.none())){
+        // need to decrease available squeezed resource
+        if(padding.getMemory() > 0){
             LOG.debug("Squeezed container is finishing. update available squeezed resource.");
             // this ccompleted container is squeezed, remember to deduct squeezed resource
             queue.completedSqueezedContainer(clusterResource, node,application,
