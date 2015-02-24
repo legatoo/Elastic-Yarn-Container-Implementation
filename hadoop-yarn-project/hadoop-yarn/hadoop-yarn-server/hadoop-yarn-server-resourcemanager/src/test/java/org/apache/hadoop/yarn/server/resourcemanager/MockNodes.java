@@ -200,7 +200,22 @@ public class MockNodes {
     public void updateNodeHeartbeatResponseForCleanup(NodeHeartbeatResponse response) {
     }
 
-    @Override
+      @Override
+      public void setResponseStretchState(NodeHeartbeatResponse response) {
+
+      }
+
+      @Override
+      public boolean getStretchState() {
+          return false;
+      }
+
+      @Override
+      public void setStretchState(boolean flag) {
+
+      }
+
+      @Override
     public NodeHeartbeatResponse getLastNodeHeartBeatResponse() {
       return null;
     }
@@ -229,6 +244,11 @@ public class MockNodes {
     public Set<String> getNodeLabels() {
       return null;
     }
+
+      @Override
+      public void updateSqueezedContainers(List<ContainerId> containers) {
+
+      }
   };
 
   private static RMNode buildRMNode(int rack, final Resource perNode, NodeState state, String httpAddr) {

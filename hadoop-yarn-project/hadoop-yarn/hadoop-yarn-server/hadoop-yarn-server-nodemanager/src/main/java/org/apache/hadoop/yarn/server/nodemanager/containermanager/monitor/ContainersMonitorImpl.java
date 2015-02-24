@@ -39,11 +39,13 @@ import org.apache.hadoop.yarn.server.nodemanager.ContainerExecutor;
 import org.apache.hadoop.yarn.server.nodemanager.Context;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.*;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerStretchEvent;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.ResourceCalculatorProcessTree;
 import org.apache.hadoop.yarn.util.ResourceCalculatorPlugin;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.yarn.util.resource.Resources;
 
 public class ContainersMonitorImpl extends AbstractService implements
         ContainersMonitor {
@@ -55,7 +57,7 @@ public class ContainersMonitorImpl extends AbstractService implements
     private MonitoringThread monitoringThread;
 
     final List<ContainerId> containersToBeRemoved;
-    final List<ContainerId> containersAreSqueezing;
+    final Map<ContainerId, ContainerSqueezeUnit> containersAreSqueezing;
     final Map<ContainerId, ProcessTreeInfo> containersToBeAdded;
     Map<ContainerId, ProcessTreeInfo> trackingContainers =
             new HashMap<ContainerId, ProcessTreeInfo>();
@@ -68,6 +70,7 @@ public class ContainersMonitorImpl extends AbstractService implements
 
     // threshold for monitor to send resource revoke
     final double threshold = 0.7;
+    final double force_kill_threshold = 0.8;
     final double squeezeThreshold = 0.2;
 
     final ContainerExecutor containerExecutor;
@@ -98,7 +101,7 @@ public class ContainersMonitorImpl extends AbstractService implements
 
         this.containersToBeAdded = new HashMap<ContainerId, ProcessTreeInfo>();
         this.containersToBeRemoved = new ArrayList<ContainerId>();
-        this.containersAreSqueezing = new ArrayList<ContainerId>();
+        this.containersAreSqueezing = new HashMap<ContainerId, ContainerSqueezeUnit>();
         this.monitoringThread = new MonitoringThread();
     }
 
@@ -382,6 +385,10 @@ public class ContainersMonitorImpl extends AbstractService implements
                 // Check memory usage and kill any overflowing containers
                 long vmemStillInUsage = 0;
                 long pmemStillInUsage = 0;
+
+                Resource strecthResourceSize = Resource.newInstance(0, 0);
+                List<ContainerId> containersNeedToStretch = new ArrayList<ContainerId>();
+
                 for (Iterator<Map.Entry<ContainerId, ProcessTreeInfo>> it =
                              trackingContainers.entrySet().iterator(); it.hasNext(); ) {
 
@@ -443,7 +450,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                                     currentVmemUsage, vmemLimit,
                                     currentPmemUsage, pmemLimit,
                                     pId, containerId, pTree);
-                            isMemoryOverLimit = true;
+                            // only use physical memory check
+                            isMemoryOverLimit = false;
                             containerExitStatus = ContainerExitStatus.KILLED_EXCEEDED_VMEM;
                         } else if (isPmemCheckEnabled()
                                 && isProcessTreeOverLimit(containerId.toString(),
@@ -487,6 +495,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                             // Accounting the total memory in usage for all containers that
                             // are still
                             // alive and within limits.
+
+
                             vmemStillInUsage += currentVmemUsage;
                             pmemStillInUsage += currentPmemUsage;
 
@@ -500,26 +510,57 @@ public class ContainersMonitorImpl extends AbstractService implements
                                         .equals(org.apache.hadoop.yarn.server.nodemanager.containermanager.container
                                         .ContainerState.RUNNING)) {
 
+                                    // since the script I am using is very slow, Here '*100' is for displying purpose
+                                    double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses)) / vmemLimit;
+                                    double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses)) / pmemLimit;
+
+                                    //set memory usage precision
+                                    DecimalFormat vMemUsage = new DecimalFormat("#.#####");
+                                    DecimalFormat pMemUsage = new DecimalFormat("#.#####");
+
+                                    vMemUsageRatio = Double.valueOf(vMemUsage.format(vMemUsageRatio));
+                                    pMemUsageRatio = Double.valueOf(pMemUsage.format(pMemUsageRatio));
+
+                                    LOG.debug(containerId +
+                                            "vMemUsageRatio: " + vMemUsageRatio +
+                                            ", pMemUsageRatio: " + pMemUsageRatio);
+
+                                    //TODO: add monitor method for squeezed container
+                                    synchronized (containersAreSqueezing){
+                                        if (containersAreSqueezing.containsKey(containerId)){
+                                            LOG.debug("LEGATO---> need to trigger recover here.");
+
+                                            // if over force_kill threshold, kill by force as reason KILLED_EXCEEDED_PMEM
+                                            if (pMemUsageRatio > force_kill_threshold){
+
+                                                containerExitStatus = ContainerExitStatus.KILLED_EXCEEDED_PMEM;
+
+                                                // kill the container
+                                                eventDispatcher.getEventHandler().handle(
+                                                        new ContainerKillEvent(containerId,
+                                                                containerExitStatus, msg));
+                                                it.remove();
+                                                LOG.info("Removed ProcessTree with root " + pId);
+
+                                                continue;
+
+                                            } else if (pMemUsageRatio > threshold){
+
+                                                Resources.addTo(strecthResourceSize,
+                                                        containersAreSqueezing.get(containerId).getDiff());
+                                                containersNeedToStretch.add(containerId);
+                                                continue;
+                                            }
+                                        }
+                                    }
+
+                                    //Container container = context.getContainers().get(containerId);
+
                                     synchronized (trackingContainersForSqueeze) {
 
                                         LOG.debug("Container State: " + context.getContainers().get(containerId).getContainerState());
                                         LOG.debug("Adding to container to be squeezed list.");
 
-
-                                        // since the script I am using is very slow, Here '*100' is for displying purpose
-                                        double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses * 100)) / vmemLimit;
-                                        double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses * 100)) / pmemLimit;
-
-                                        //set memory usage precision
-                                        DecimalFormat vMemUsage = new DecimalFormat("#.###");
-                                        DecimalFormat pMemUsage = new DecimalFormat("#.###");
-
-                                        vMemUsageRatio = Double.valueOf(vMemUsage.format(vMemUsageRatio));
-                                        pMemUsageRatio = Double.valueOf(pMemUsage.format(pMemUsageRatio));
-
-                                        LOG.debug(containerId +
-                                                "vMemUsageRatio: " + vMemUsageRatio +
-                                                ", pMemUsageRatio: " + pMemUsageRatio);
 
 
                                         // only squeeze the containers whoes usage is under warning threshold
@@ -554,6 +595,14 @@ public class ContainersMonitorImpl extends AbstractService implements
                         LOG.warn("Uncaught exception in ContainerMemoryManager "
                                 + "while managing memory of " + containerId, e);
                     }
+                }
+
+                if (strecthResourceSize.getMemory() != 0 &&
+                        !containersNeedToStretch.isEmpty()){
+                    // TODO: send event to stretch here!
+                    eventDispatcher.getEventHandler().handle(
+                            new ContainerStretchEvent(containersNeedToStretch, strecthResourceSize)
+                    );
                 }
 
                 try {
@@ -650,12 +699,26 @@ public class ContainersMonitorImpl extends AbstractService implements
                 synchronized (this.containersToBeRemoved) {
                     this.containersToBeRemoved.add(containerId);
                 }
+
+                //also remove from squeezed container tracking list
+                synchronized (this.containersAreSqueezing){
+                    if (this.containersAreSqueezing.containsKey(containerId))
+                        this.containersAreSqueezing.remove(containerId);
+                }
+
                 break;
-            case UPDATE_MONITORING_CONTAINER:
+            // new event
+            case MONITOR_SQUEEZED_CONTAINER:
+                ContainerMonitorUpdateEvent containerMonitorUpdateEvent =
+                        (ContainerMonitorUpdateEvent)monitoringEvent;
+                ContainerSqueezeUnit containerSqueezeUnit =
+                        containerMonitorUpdateEvent.getContainerSqueezeUnit();
 
                 synchronized (this.containersAreSqueezing){
-                    this.containersAreSqueezing.add(containerId);
-                    LOG.debug("Add threshold monitor for container: " + containerId);
+                    if (!this.containersAreSqueezing.containsKey(containerId)) {
+                        this.containersAreSqueezing.put(containerId, containerSqueezeUnit);
+                        LOG.debug("Add threshold monitor for container: " + containerId);
+                    }
                 }
                 break;
             default:

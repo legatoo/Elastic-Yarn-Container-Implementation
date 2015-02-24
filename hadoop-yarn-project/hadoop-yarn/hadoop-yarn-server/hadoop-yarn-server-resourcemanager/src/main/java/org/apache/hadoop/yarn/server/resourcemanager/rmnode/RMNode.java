@@ -129,7 +129,10 @@ public interface RMNode {
 
   public void updateNodeHeartbeatResponseForSqueeze(NodeHeartbeatResponse response);
 
-  public void cleanContainersToBeSqueezed();
+    public void setResponseStretchState(NodeHeartbeatResponse response);
+
+
+    public void cleanContainersToBeSqueezed();
 
   public NodeHeartbeatResponse getLastNodeHeartBeatResponse();
   
@@ -155,4 +158,10 @@ public interface RMNode {
   public boolean getIfSqueeze();
 
   public void setIfSqueeze(boolean flag);
+
+    public boolean getStretchState();
+
+    public void setStretchState(boolean flag);
+
+    public void updateSqueezedContainers(List<ContainerId> containers);
 }

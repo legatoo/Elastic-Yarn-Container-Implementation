@@ -20,8 +20,10 @@ package org.apache.hadoop.yarn.server.resourcemanager.rmnode;
 
 import java.util.List;
 
+import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
+import org.apache.hadoop.yarn.api.records.Resource;
 
 public class UpdatedContainerInfo {
     private List<ContainerStatus> newlyLaunchedContainers;
@@ -29,6 +31,8 @@ public class UpdatedContainerInfo {
 
     // TODO: use updatedContainerInfo to update node resource in RM
     private List<ContainerSqueezeUnit> newlySqueezedContainers;
+    private List<ContainerId> containersToStretch;
+    private Resource stretchResourceSize;
 
 
     public UpdatedContainerInfo() {
@@ -44,10 +48,14 @@ public class UpdatedContainerInfo {
 
     public UpdatedContainerInfo(List<ContainerStatus> newlyLaunchedContainers
             , List<ContainerStatus> completedContainers
-            , List<ContainerSqueezeUnit> newlySqueezedContainers) {
+            , List<ContainerSqueezeUnit> newlySqueezedContainers
+            , List<ContainerId> containersToStretch
+            , Resource resource) {
         this.newlyLaunchedContainers = newlyLaunchedContainers;
         this.completedContainers = completedContainers;
         this.newlySqueezedContainers = newlySqueezedContainers;
+        this.containersToStretch = containersToStretch;
+        this.stretchResourceSize = resource;
     }
 
 
@@ -60,4 +68,12 @@ public class UpdatedContainerInfo {
     }
 
     public List<ContainerSqueezeUnit> getNewlySqueezedContainers() { return this.newlySqueezedContainers; }
+
+    public Resource getStretchResourceSize() {
+        return stretchResourceSize;
+    }
+
+    public List<ContainerId> getContainersToStretch() {
+        return containersToStretch;
+    }
 }

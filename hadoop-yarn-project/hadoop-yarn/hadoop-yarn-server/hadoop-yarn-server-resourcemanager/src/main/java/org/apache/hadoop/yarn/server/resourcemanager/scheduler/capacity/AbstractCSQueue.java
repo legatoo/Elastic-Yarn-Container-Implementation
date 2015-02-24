@@ -130,6 +130,14 @@ public abstract class AbstractCSQueue implements CSQueue {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        // name should be the same
+        // not good because the queue is hirecture.
+        AbstractCSQueue other = (AbstractCSQueue)obj;
+        return this.getQueueName().equals(other.getQueueName());
+    }
+
+    @Override
     public synchronized float getCapacity() {
         return capacity;
     }
@@ -418,6 +426,14 @@ public abstract class AbstractCSQueue implements CSQueue {
 
     protected synchronized void completeSqueezedContainer(Resource clusterResource, Resource resource){
         Resources.subtractFrom(availableSqueezedResource, resource);
+        // TODO: if available squeezed resource is under 0
+    }
+
+    protected synchronized void stretchResource(Resource clusterResource, Resource stretch){
+        Resource stretchByCapacity = Resource.newInstance(
+                (int)(stretch.getMemory()*this.getCapacity()), 0
+        );
+        Resources.subtractFrom(availableSqueezedResource, stretchByCapacity);
         // TODO: if available squeezed resource is under 0
     }
 

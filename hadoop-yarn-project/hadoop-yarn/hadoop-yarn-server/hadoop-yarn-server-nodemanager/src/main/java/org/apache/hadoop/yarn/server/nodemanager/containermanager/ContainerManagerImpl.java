@@ -103,11 +103,14 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.logaggregation
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.LogHandler;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.NonAggregatingLogHandler;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.event.LogHandlerEventType;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerMonitorUpdateEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitorEventType;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitorImpl;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.CompleteSqueezedContainerEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerSqueezer;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerSqueezerEventType;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerStrecthDoneEvent;
 import org.apache.hadoop.yarn.server.nodemanager.metrics.NodeManagerMetrics;
 import org.apache.hadoop.yarn.server.nodemanager.recovery.NMStateStoreService;
 import org.apache.hadoop.yarn.server.nodemanager.recovery.NMStateStoreService.RecoveredApplicationsState;
@@ -1109,12 +1112,22 @@ public class ContainerManagerImpl extends CompositeService implements
             case FINISH_CONTAINERS:
                 CMgrCompletedContainersEvent containersFinishedEvent =
                         (CMgrCompletedContainersEvent) event;
+
+
                 for (ContainerId container : containersFinishedEvent
                         .getContainersToCleanup()) {
                     this.dispatcher.getEventHandler().handle(
                             new ContainerKillEvent(container,
                                     ContainerExitStatus.KILLED_BY_RESOURCEMANAGER,
                                     "Container Killed by ResourceManager"));
+
+                    // remove from squeezer
+                    LOG.debug("hakunami: remove clean up container from Squeezer.");
+                    this.dispatcher.getEventHandler().handle(
+                            new CompleteSqueezedContainerEvent(container)
+                    );
+
+
                 }
                 break;
 
@@ -1134,11 +1147,31 @@ public class ContainerManagerImpl extends CompositeService implements
                         continue;
                     }
 
+                    LOG.debug("sending squeezed container event to Squeezer");
                     this.dispatcher.getEventHandler().handle((
                             new ContainerSqueezeEvent(squeeze.getContainerId(),
                                     ContainerEventType.CONTAINER_SQUEEZE,
                                     squeeze)
                             ));
+
+                    // TODO: send event to monitor to update tracking method
+                    LOG.debug("sending squeezed container event to Monitor");
+                    // for those containers
+                    this.dispatcher.getEventHandler().handle((
+                            new ContainerMonitorUpdateEvent(squeeze)
+                            ));
+                }
+                break;
+
+            case STRETCH_STATE_FROM_RM:
+                CMgrStretchStateEvent stretchStateEvent = (CMgrStretchStateEvent)event;
+                boolean state = stretchStateEvent.getStretchState();
+
+                if (state){
+                    LOG.debug("Stretch is successful.");
+                    this.dispatcher.getEventHandler().handle(
+                            new ContainerStrecthDoneEvent(true, ContainerSqueezerEventType.STRETCH_DONE)
+                    );
                 }
                 break;
             default:

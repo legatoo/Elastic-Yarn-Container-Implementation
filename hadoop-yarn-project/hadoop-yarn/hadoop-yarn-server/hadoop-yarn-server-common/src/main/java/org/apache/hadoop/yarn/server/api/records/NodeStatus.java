@@ -30,7 +30,9 @@ public abstract class NodeStatus {
                                          List<ApplicationId> keepAliveApplications,
                                          NodeHealthStatus nodeHealthStatus,
                                          List<ContainerSqueezeUnit> containerMemoryStatuses,
-                                         List<ContainerSqueezeUnit> squeezedContainers) {
+                                         List<ContainerSqueezeUnit> squeezedContainers,
+                                         List<ContainerId> containersToStretch,
+                                         Resource stretchResourceSize) {
         NodeStatus nodeStatus = Records.newRecord(NodeStatus.class);
         nodeStatus.setResponseId(responseId);
         nodeStatus.setNodeId(nodeId);
@@ -39,6 +41,8 @@ public abstract class NodeStatus {
         nodeStatus.setNodeHealthStatus(nodeHealthStatus);
         nodeStatus.setContainerMemoryStatuses(containerMemoryStatuses);
         nodeStatus.setSqueezedContainers(squeezedContainers);
+        nodeStatus.setContainersToStretch(containersToStretch);
+        nodeStatus.setStretchResourceSize(stretchResourceSize);
         return nodeStatus;
     }
 
@@ -63,6 +67,10 @@ public abstract class NodeStatus {
 
     public abstract void setResponseId(int responseId);
 
+    public abstract void setStretchResourceSize(Resource stretchResourceSize);
+
+    public abstract Resource getStretchResourceSize();
+
     public abstract void setContainerMemoryStatuses(
             List<ContainerSqueezeUnit> containerMemoryStatuses);
 
@@ -73,5 +81,10 @@ public abstract class NodeStatus {
             List<ContainerSqueezeUnit> squeezedContainers);
 
     public abstract List<ContainerSqueezeUnit> getSqueezedContainers();
+
+    public abstract void setContainersToStretch(
+            List<ContainerId> squeezedContainers);
+
+    public abstract List<ContainerId> getContainersToStretch();
 
 }

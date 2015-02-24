@@ -222,6 +222,13 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 //                                squeezedContainers, nodeId)
 //                );
                 break;
+
+            case STRETCH_DONE:
+                List<ContainerId> containersToStretch =
+                        ((PeriodicSchedulerStretchDoneEvent)event).getStretchedContainers();
+                updateCurrentSqueezedContaners(nodeId, containersToStretch);
+                break;
+
             default:
                 break;
 
@@ -306,6 +313,22 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
             }
         }
     }
+
+
+    private void updateCurrentSqueezedContaners(NodeId nodeId,
+                                          List<ContainerId> containersToStretch){
+        if (containersToStretch.isEmpty())
+            return ;
+        synchronized (currentSqueezedContainers){
+
+            for (ContainerId containerId : containersToStretch){
+                LOG.debug("Remove " + containerId + " from current squeezed containers list.");
+                if (currentSqueezedContainers.containsKey(containerId))
+                    currentSqueezedContainers.remove(containerId);
+            }
+        }
+    }
+
 
     public AtomicBoolean getOperating() {
         return operating;

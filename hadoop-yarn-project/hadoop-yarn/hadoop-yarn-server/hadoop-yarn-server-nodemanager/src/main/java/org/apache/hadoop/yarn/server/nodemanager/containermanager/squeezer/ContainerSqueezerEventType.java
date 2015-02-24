@@ -5,5 +5,8 @@ package org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer;
  */
 public enum ContainerSqueezerEventType {
     CONTAINER_SQUEEZE,
-    CONTAINER_RECOVER
+    CONTAINER_RECOVER,
+    REMOVE_SQUEEZED_CONTAINER,
+    STRETCH_RESOURCE,
+    STRETCH_DONE
 }

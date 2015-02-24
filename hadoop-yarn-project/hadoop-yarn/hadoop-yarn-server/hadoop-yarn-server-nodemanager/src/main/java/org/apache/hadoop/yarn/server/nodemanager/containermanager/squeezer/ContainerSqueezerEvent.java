@@ -8,7 +8,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.launcher.Conta
 /**
  * Created by steven on 2/3/15.
  */
-public class ContainerSqueezerEvent extends AbstractEvent<ContainerSqueezerEventType> {
+public class ContainerSqueezerEvent extends ContainerSqueezerBaseEvent {
 
     private final ContainerSqueezeUnit containerSqueezeUnit;
 

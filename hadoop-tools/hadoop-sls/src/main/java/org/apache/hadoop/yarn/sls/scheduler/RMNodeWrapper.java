@@ -173,4 +173,24 @@ public class RMNodeWrapper implements RMNode {
     public void setIfSqueeze(boolean flag) {
 
     }
+
+    @Override
+    public void setResponseStretchState(NodeHeartbeatResponse response) {
+
+    }
+
+    @Override
+    public boolean getStretchState() {
+        return false;
+    }
+
+    @Override
+    public void setStretchState(boolean flag) {
+
+    }
+
+    @Override
+    public void updateSqueezedContainers(List<ContainerId> containers) {
+
+    }
 }

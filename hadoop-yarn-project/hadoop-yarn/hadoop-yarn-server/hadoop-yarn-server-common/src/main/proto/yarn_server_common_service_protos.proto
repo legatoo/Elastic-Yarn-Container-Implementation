@@ -60,7 +60,7 @@ message NodeHeartbeatResponseProto {
   optional string diagnostics_message = 8;
   repeated ContainerIdProto containers_to_be_removed_from_nm = 9;
   repeated SystemCredentialsForAppsProto system_credentials_for_apps = 10;
-  optional bool flag = 11;
+  optional bool stretchDone = 11 [default = false];
   repeated ContainerSqueezeUnitProto containers_to_be_squeezed = 12;
 }
 

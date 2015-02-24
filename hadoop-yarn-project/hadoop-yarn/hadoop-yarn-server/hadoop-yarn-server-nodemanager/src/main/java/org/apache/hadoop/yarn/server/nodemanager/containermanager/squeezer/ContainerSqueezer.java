@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.UnsupportedFileSystemException;
 import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
+import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
@@ -25,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Created by steven on 2/3/15.
  */
 public class ContainerSqueezer extends AbstractService
-        implements EventHandler<ContainerSqueezerEvent> {
+        implements EventHandler<ContainerSqueezerBaseEvent> {
     private static final Log LOG = LogFactory.getLog(ContainerSqueezer.class);
 
 
@@ -34,6 +35,9 @@ public class ContainerSqueezer extends AbstractService
     private final Dispatcher dispatcher;
     private final ContainerManagerImpl containerManager;
     private AtomicBoolean ifSqueeze = new AtomicBoolean(false);
+    private AtomicBoolean ifStretch = new AtomicBoolean(false);
+    private Resource strecthResourceSize = Resource.newInstance(0, 0);
+    private List<ContainerId> containersToStretch = new ArrayList<ContainerId>();
 
     private final Map<ContainerId, ContainerSqueezeUnit> currentSqueezedContainers
             = Collections.synchronizedMap(new HashMap<ContainerId, ContainerSqueezeUnit>());
@@ -62,21 +66,26 @@ public class ContainerSqueezer extends AbstractService
     }
 
     @Override
-    public void handle(ContainerSqueezerEvent event) {
-        ContainerSqueezeUnit containerSqueezeUnit = event.getContainerSqueezeUnit();
-        ContainerId containerId = containerSqueezeUnit.getContainerId();
+    public void handle(ContainerSqueezerBaseEvent event) {
 
 //        ((ContainerManagerImpl)context.getContainerManager()).getContainersMonitor()
 //                .informMonitor(containerSqueezeUnit);
 
         // Squeeze operation is HERE
         LOG.debug("Processing " + event.getType() + " in ContainerSqueezer.");
+        ContainerId containerId;
 
         switch ( event.getType()){
             case CONTAINER_SQUEEZE:
+                ContainerSqueezerEvent containerSqueezerEvent = (ContainerSqueezerEvent)event;
+                ContainerSqueezeUnit containerSqueezeUnit =
+                        containerSqueezerEvent.getContainerSqueezeUnit();
+
+                containerId = containerSqueezeUnit.getContainerId();
                 synchronized (currentSqueezedContainers) {
                     if (!currentSqueezedContainers.containsKey(containerId)) {
-                        LOG.debug("Squeezing " + containerId + " with resource amount of "
+                        LOG.debug("Squeezing " + containerId + " on node " + context.getNodeId()
+                                + " with resource amount of "
                                 + containerSqueezeUnit.getDiff() );
                         //Container container = context.getContainers().get(containerId);
 
@@ -91,14 +100,49 @@ public class ContainerSqueezer extends AbstractService
                         // done in ContainerImpl
 
                         // 4. update heart beat about successfully squeezed containers
-                        setIfSqueeze(true);
+                        // only if on need to stretch. if stretch is needed. no sense to
+                        // squeeze
+                        if (!getIfStretch())
+                            setIfSqueeze(true);
                     }
 
                 }
 
                 break;
-            case CONTAINER_RECOVER:
+            case REMOVE_SQUEEZED_CONTAINER:
+                CompleteSqueezedContainerEvent completeSqueezedContainerEvent =
+                        (CompleteSqueezedContainerEvent)event;
+                containerId =
+                        completeSqueezedContainerEvent.getCompletedSqueezedContainerId();
+                synchronized ( currentSqueezedContainers){
+                    if (currentSqueezedContainers.containsKey(containerId)){
+                        currentSqueezedContainers.remove(containerId);
+
+                        LOG.debug("Well Done. " + containerId + " has been removed from Squeezer.");
+                    }
+                }
+            case STRETCH_RESOURCE:
                 // TODO
+                ContainerStretchEvent containerStretchEvent =
+                        (ContainerStretchEvent)event;
+
+                Resource resource = containerStretchEvent.getStrecthResourceSize();
+                List<ContainerId> containersNeedToStretch =
+                        containerStretchEvent.getContainersNeedToStretch();
+                if(resource.getMemory() != 0 &&
+                        !containersNeedToStretch.isEmpty()){
+                    setStrecthResourceSize(resource);
+                    setContainersToStretch(containersNeedToStretch);
+                    setIfStretch(true);
+                }
+
+                break;
+            case STRETCH_DONE:
+                LOG.debug("hakunami------>hakunami");
+                ContainerStrecthDoneEvent containerStrecthDoneEvent =
+                        (ContainerStrecthDoneEvent)event;
+                if (containerStrecthDoneEvent.getIfDone())
+                    setIfStretch(false);
                 break;
 
         }
@@ -134,12 +178,37 @@ public class ContainerSqueezer extends AbstractService
         return returnResult;
     }
 
-    public boolean getIfSqueeze() {
+    public synchronized boolean getIfSqueeze() {
         return ifSqueeze.get();
     }
 
-    public void setIfSqueeze(boolean ifSqueeze) {
+    public synchronized void setIfSqueeze(boolean ifSqueeze) {
         LOG.debug("ContainerSqueezer set squeeze flag to " + ifSqueeze);
         this.ifSqueeze.set(ifSqueeze);
+    }
+
+    public synchronized void setIfStretch(boolean ifStretch) {
+        LOG.debug("Container Stretch set to " + ifSqueeze);
+        this.ifStretch.set(ifStretch);
+    }
+
+    public synchronized boolean getIfStretch() {
+        return ifStretch.get();
+    }
+
+    public Resource getStrecthResourceSize() {
+        return strecthResourceSize;
+    }
+
+    public void setStrecthResourceSize(Resource strecthResourceSize) {
+        this.strecthResourceSize = strecthResourceSize;
+    }
+
+    public List<ContainerId> getContainersToStretch() {
+        return containersToStretch;
+    }
+
+    public void setContainersToStretch(List<ContainerId> containersToStretch) {
+        this.containersToStretch.addAll(containersToStretch);
     }
 }

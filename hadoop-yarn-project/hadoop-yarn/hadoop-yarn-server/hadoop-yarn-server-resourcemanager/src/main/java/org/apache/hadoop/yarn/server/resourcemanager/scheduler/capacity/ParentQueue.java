@@ -743,6 +743,23 @@ public class ParentQueue extends AbstractCSQueue {
     }
 
     @Override
+    public void stretchThisQueue(Resource clusterResource, FiCaSchedulerNode node,
+                                FiCaSchedulerApp application, Resource stretch) {
+        synchronized (this){
+            super.stretchResource(clusterResource, stretch);
+
+            // Inform the parent
+            if (parent != null) {
+                // complete my parent
+                parent.stretchThisQueue(clusterResource, node,
+                        application, stretch);
+            }
+
+        }
+    }
+
+
+    @Override
     public synchronized void updateClusterResource(Resource clusterResource) {
         // Update all children
         for (CSQueue childQueue : childQueues) {

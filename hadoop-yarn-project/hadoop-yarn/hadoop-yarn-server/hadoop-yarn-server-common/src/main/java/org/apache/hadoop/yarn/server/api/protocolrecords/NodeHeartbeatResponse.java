@@ -32,7 +32,7 @@ import org.apache.hadoop.yarn.server.api.records.NodeAction;
 public interface NodeHeartbeatResponse {
   int getResponseId();
   NodeAction getNodeAction();
-  boolean getFlag();
+  boolean getStretchDone();
 
   List<ContainerId> getContainersToCleanup();
   List<ContainerId> getContainersToBeRemovedFromNM();
@@ -42,7 +42,7 @@ public interface NodeHeartbeatResponse {
 
   void setResponseId(int responseId);
   void setNodeAction(NodeAction action);
-  void setFlag(boolean flag);
+  void setStretchDone(boolean stretchDone);
 
   MasterKey getContainerTokenMasterKey();
   void setContainerTokenMasterKey(MasterKey secretKey);

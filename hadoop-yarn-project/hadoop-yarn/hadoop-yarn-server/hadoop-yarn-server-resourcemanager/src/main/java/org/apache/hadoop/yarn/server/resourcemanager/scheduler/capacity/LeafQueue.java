@@ -1864,6 +1864,7 @@ public class LeafQueue extends AbstractCSQueue {
         LOG.debug("squeezed container is going to complete. squeeze size is ");
 
         synchronized (this){
+
             node.completeSqueezedContainer(squeezed);
 
             completeSqueezedContainer(clusterResource, application, squeezed);
@@ -1874,6 +1875,23 @@ public class LeafQueue extends AbstractCSQueue {
         }
 
     }
+
+    @Override
+    public void stretchThisQueue(Resource clusterResource, FiCaSchedulerNode node,
+                             FiCaSchedulerApp application, Resource stretch){
+        LOG.debug("stretch this queue ");
+
+        synchronized (this){
+            //node.stretch(stretch);
+
+            stretchResource(clusterResource, application, stretch);
+
+            getParent().stretchThisQueue(clusterResource, node, application, stretch);
+
+        }
+
+    }
+
 
 
     @Override
@@ -2046,6 +2064,19 @@ public class LeafQueue extends AbstractCSQueue {
         String userName = application.getUser();
         User user = getUser(userName);
         user.completeSqueezedContainer(resource);
+
+    }
+
+    synchronized void stretchResource(Resource clusterResource, FiCaSchedulerApp application, Resource stretch){
+
+        super.stretchResource(clusterResource, stretch);
+        this.getCapacity();
+        Resource stretchByCapacity = Resource.newInstance(
+                (int)(stretch.getMemory()*getCapacity()), 0);
+
+        String userName = application.getUser();
+        User user = getUser(userName);
+        user.stretchResource(stretchByCapacity);
 
     }
 
@@ -2244,6 +2275,11 @@ public class LeafQueue extends AbstractCSQueue {
 
         public synchronized void completeSqueezedContainer(Resource squeezed){
             Resources.subtractFrom(availableSqueezedResource, squeezed);
+            //TODO: if available squeezed resource is under 0
+        }
+
+        public synchronized void stretchResource(Resource stretch){
+            Resources.subtractFrom(availableSqueezedResource, stretch);
             //TODO: if available squeezed resource is under 0
         }
     }

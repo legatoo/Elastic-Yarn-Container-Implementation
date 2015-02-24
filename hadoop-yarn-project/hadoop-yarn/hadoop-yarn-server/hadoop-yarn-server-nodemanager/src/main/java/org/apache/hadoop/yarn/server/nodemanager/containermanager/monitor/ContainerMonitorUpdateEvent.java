@@ -19,13 +19,21 @@
 package org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor;
 
 import org.apache.hadoop.yarn.api.records.ContainerId;
+import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
 
 public class ContainerMonitorUpdateEvent extends ContainersMonitorEvent {
 
-    public ContainerMonitorUpdateEvent(ContainerId containerId) {
-        super(containerId, ContainersMonitorEventType.UPDATE_MONITORING_CONTAINER);
+    private final ContainerSqueezeUnit containerSqueezeUnit;
+
+    public ContainerMonitorUpdateEvent(ContainerSqueezeUnit containerSqueezeUnit) {
+        super(containerSqueezeUnit.getContainerId(),
+                ContainersMonitorEventType.MONITOR_SQUEEZED_CONTAINER);
+        this.containerSqueezeUnit = containerSqueezeUnit;
 
     }
 
+    public ContainerSqueezeUnit getContainerSqueezeUnit() {
+        return this.containerSqueezeUnit;
+    }
 
 }

@@ -549,13 +549,13 @@ public class ContainerImpl implements Container {
                 containerId, exitCode));
     }
 
-    @SuppressWarnings("unchecked")
-    private void sendContainerMonitorUpdateEvent(){
-        // Inform Container Monitor after squeeze operation
-        // This method assists Container Stretch feature
-        EventHandler eventHandler = dispatcher.getEventHandler();
-        eventHandler.handle( new ContainerMonitorUpdateEvent(containerId));
-    }
+//    @SuppressWarnings("unchecked")
+//    private void sendContainerMonitorUpdateEvent(){
+//        // Inform Container Monitor after squeeze operation
+//        // This method assists Container Stretch feature
+//        EventHandler eventHandler = dispatcher.getEventHandler();
+//        eventHandler.handle( new ContainerMonitorUpdateEvent(containerId));
+//    }
 
     @SuppressWarnings("unchecked") // dispatcher not typed
     private void sendLaunchEvent() {
@@ -834,7 +834,7 @@ public class ContainerImpl implements Container {
         public void transition(ContainerImpl container, ContainerEvent event) {
             LOG.debug("Transition from RUNNING to SQUEEZE " + container + " " + event);
             // send event to container monitor
-            container.sendContainerMonitorUpdateEvent();
+            //container.sendContainerMonitorUpdateEvent();
             // update metrics information
             container.metrics.addSqueezedContainer();
             ContainerSqueezeUnit containerSqueezeUnit = ((ContainerSqueezeEvent)event)

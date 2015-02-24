@@ -27,8 +27,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.api.records.impl.pb.*;
-import org.apache.hadoop.yarn.proto.YarnProtos;
+import org.apache.hadoop.yarn.proto.YarnProtos.ContainerIdProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ApplicationIdProto;
+import org.apache.hadoop.yarn.proto.YarnProtos.ResourceProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerStatusProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerMemoryStatusProto;
 import org.apache.hadoop.yarn.proto.YarnProtos.ContainerSqueezeUnitProto;
@@ -53,6 +54,8 @@ public class NodeStatusPBImpl extends NodeStatus {
     private List<ApplicationId> keepAliveApplications = null;
     private List<ContainerSqueezeUnit> containerMemoryStatuses = null;
     private List<ContainerSqueezeUnit> squeezedContainers = null;
+    private List<ContainerId> containersToStretch = null;
+    private Resource stretchResourceSize = null;
 
     public NodeStatusPBImpl() {
         builder = NodeStatusProto.newBuilder();
@@ -90,6 +93,14 @@ public class NodeStatusPBImpl extends NodeStatus {
 
         if (this.squeezedContainers != null) {
             addSqueezedContainersToProto();
+        }
+
+        if (this.containersToStretch != null) {
+            addContainersToStretchToProto();
+        }
+
+        if (this.stretchResourceSize != null) {
+            builder.setStretchResourceSize(convertToProtoFormat(this.stretchResourceSize));
         }
     }
 
@@ -211,6 +222,40 @@ public class NodeStatusPBImpl extends NodeStatus {
         builder.addAllSqueezedContainers(iterable);
     }
 
+    private synchronized void addContainersToStretchToProto() {
+        maybeInitBuilder();
+        builder.clearContainersToStretch();
+        if (containersToStretch == null)
+            return;
+        Iterable<ContainerIdProto> iterable = new Iterable<ContainerIdProto>() {
+            @Override
+            public Iterator<ContainerIdProto> iterator() {
+                return new Iterator<ContainerIdProto>() {
+
+                    Iterator<ContainerId> iter = containersToStretch.iterator();
+
+                    @Override
+                    public boolean hasNext() {
+                        return iter.hasNext();
+                    }
+
+                    @Override
+                    public ContainerIdProto next() {
+                        return convertToProtoFormat(iter.next());
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+
+                    }
+                };
+
+            }
+        };
+        builder.addAllContainersToStretch(iterable);
+    }
+
     private synchronized void addKeepAliveApplicationsToProto() {
         maybeInitBuilder();
         builder.clearKeepAliveApplications();
@@ -269,6 +314,8 @@ public class NodeStatusPBImpl extends NodeStatus {
         sb.append("ContainerStatus: ").append(getContainersStatuses()).append(", ");
         sb.append("ContainerMemoryStatus: ").append(getContainerMemoryStatuses()).append(", ");
         sb.append("ContainerSqueezed: ").append(getSqueezedContainers()).append(", ");
+        sb.append("ContainersToStretch: ").append(getContainersToStretch()).append(", ");
+        sb.append("StretchSize: ").append(getStretchResourceSize()).append(", ");
         sb.append("]");
         return sb.toString();
     }
@@ -307,6 +354,30 @@ public class NodeStatusPBImpl extends NodeStatus {
         this.nodeId = nodeId;
 
     }
+
+    @Override
+    public synchronized Resource getStretchResourceSize() {
+        NodeStatusProtoOrBuilder p = viaProto ? proto : builder;
+        if (this.stretchResourceSize != null) {
+            return this.stretchResourceSize;
+        }
+        if (!p.hasStretchResourceSize()) {
+            return null;
+        }
+        this.stretchResourceSize = convertFromProtoFormat(p.getStretchResourceSize());
+
+        return this.stretchResourceSize;
+    }
+
+    @Override
+    public synchronized void setStretchResourceSize(Resource stretchResourceSize) {
+        maybeInitBuilder();
+        if (stretchResourceSize == null)
+            builder.clearStretchResourceSize();
+        this.stretchResourceSize = stretchResourceSize;
+
+    }
+
 
     @Override
     public synchronized List<ContainerStatus> getContainersStatuses() {
@@ -409,6 +480,20 @@ public class NodeStatusPBImpl extends NodeStatus {
         }
     }
 
+    private synchronized void initContainersToStretch() {
+        if (this.containersToStretch != null) {
+            return;
+        }
+
+        NodeStatusProtoOrBuilder p = viaProto ? proto : builder;
+        List<ContainerIdProto> list = p.getContainersToStretchList();
+        this.containersToStretch = new ArrayList<ContainerId>();
+
+        for (ContainerIdProto c : list) {
+            this.containersToStretch.add(convertFromProtoFormat(c));
+        }
+    }
+
 
     @Override
     public synchronized NodeHealthStatus getNodeHealthStatus() {
@@ -446,6 +531,23 @@ public class NodeStatusPBImpl extends NodeStatus {
         initSqueezedContainers();
         return this.squeezedContainers;
     }
+
+    @Override
+        public synchronized List<ContainerId> getContainersToStretch() {
+        initContainersToStretch();
+        return this.containersToStretch;
+    }
+
+    @Override
+    public synchronized void setContainersToStretch(List<ContainerId> containersToStretch) {
+        maybeInitBuilder();
+        if ( containersToStretch == null) {
+            builder.clearContainersToStretch();
+        }
+        this.containersToStretch = containersToStretch;
+    }
+
+
 
     private NodeIdProto convertToProtoFormat(NodeId nodeId) {
         return ((NodeIdPBImpl) nodeId).getProto();
@@ -494,6 +596,22 @@ public class NodeStatusPBImpl extends NodeStatus {
 
     private ContainerSqueezeUnitProto convertToProtoFormat(ContainerSqueezeUnit c) {
         return ((ContainerSqueezeUnitPBImpl) c).getProto();
+    }
+
+    private ContainerIdProto convertToProtoFormat(ContainerId c) {
+        return ((ContainerIdPBImpl)c).getProto();
+    }
+
+    private ContainerIdPBImpl convertFromProtoFormat(ContainerIdProto c) {
+        return new ContainerIdPBImpl(c);
+    }
+
+    private ResourceProto convertToProtoFormat(Resource c) {
+        return ((ResourcePBImpl) c).getProto();
+    }
+
+    private ResourcePBImpl convertFromProtoFormat(ResourceProto c) {
+        return new ResourcePBImpl(c);
     }
 
 }

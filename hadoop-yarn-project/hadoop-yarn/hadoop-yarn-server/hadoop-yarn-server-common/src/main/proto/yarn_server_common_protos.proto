@@ -42,6 +42,8 @@ message NodeStatusProto {
     repeated ApplicationIdProto keep_alive_applications = 5;
     repeated ContainerSqueezeUnitProto containerMemoryStatuses = 6;
     repeated ContainerSqueezeUnitProto squeezedContainers = 7;
+    repeated ContainerIdProto containersToStretch = 8;
+    optional ResourceProto stretchResourceSize = 9;
 }
 
 message MasterKeyProto {

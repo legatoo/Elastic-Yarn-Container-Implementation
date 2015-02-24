@@ -192,46 +192,6 @@ public abstract class SchedulerNode {
                 + " available after allocation");
     }
 
-//    /**
-//     * The Scheduler has allocated containers on this node to the given
-//     * application.
-//     *
-//     * @param rmContainer allocated container
-//     */
-//    public synchronized void allocateContainerWithSqueezedSpace(RMContainer rmContainer) {
-//
-//        Container container = rmContainer.getContainer();
-//        assert( container.getResource().getMemory() > getAvailableResource().getMemory());
-//
-//        // the priority is to use squeezed space first
-//        if ( getSqueezedResource().getMemory() >= container.getResource().getMemory()){
-//            deductSqueezedResource(container.getResource());
-//            container.setPadding(container.getResource());
-//        } else {
-//            Resource diff = Resources.subtract(container.getResource(), getSqueezedResource());
-//
-//            deductAvailableResource(diff);
-//            container.setPadding(getSqueezedResource());
-//
-//            // squeezed resource is used up
-//            squeezedResource.setMemory(0);
-//            squeezedResource.setVirtualCores(0);
-//
-//        }
-//
-//        ++numSqueezedContainers;
-//        ++numContainers;
-//
-//        launchedContainers.put(container.getId(), rmContainer);
-//        speculativeContainers.put(container.getId(), rmContainer);
-//
-//        LOG.info("Assigned speculative container " + container.getId() + " of capacity "
-//                + container.getResource() + " on host " + rmNode.getNodeAddress()
-//                + ", which has " + numContainers + " containers, "
-//                + getUsedResource() + " used and " + getSqueezedResource() + " squeezed used and "
-//                + getAvailableResource()
-//                + " available and " + getSqueezedResource() + " available squeezed space after allocation");
-//    }
 
 
     /**
@@ -299,6 +259,11 @@ public abstract class SchedulerNode {
             LOG.warn("available squeezed resource is under 0. Need to kill " +
                     "speculative containers");
         }
+    }
+
+    public synchronized void stretch(Resource stretch){
+
+        deductAvailableSqueezedResource(stretch);
     }
 
     /**
@@ -472,6 +437,11 @@ public abstract class SchedulerNode {
         allocateContainer(rmContainer);
     }
 
+    public synchronized void updateSqueezedContainers(List<ContainerId> containersToStretch){
+        for (ContainerId containerId : containersToStretch){
+            if (squeezedContainers.containsKey(containerId))
+                squeezedContainers.remove(containerId);
+        }
+    }
 
-    // TODO: update resource information after container covery operation
 }

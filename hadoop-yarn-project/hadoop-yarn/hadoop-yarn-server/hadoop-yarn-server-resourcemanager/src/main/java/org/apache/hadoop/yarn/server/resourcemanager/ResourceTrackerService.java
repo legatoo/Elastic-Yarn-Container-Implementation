@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
@@ -363,6 +364,14 @@ public class ResourceTrackerService extends AbstractService implements
 
         NodeId nodeId = remoteNodeStatus.getNodeId();
 
+        Resource stretchResourceSize = remoteNodeStatus.getStretchResourceSize();
+        List<ContainerId> containersToStretch = remoteNodeStatus.getContainersToStretch();
+        if (stretchResourceSize == null)
+            stretchResourceSize = Resource.newInstance(0, 0);
+        if (containersToStretch == null)
+            containersToStretch = new ArrayList<ContainerId>();
+
+
         // 1. Check if it's a registered node
         RMNode rmNode = this.rmContext.getRMNodes().get(nodeId);
         if (rmNode == null) {
@@ -426,6 +435,7 @@ public class ResourceTrackerService extends AbstractService implements
             LOG.debug("No container is squeezed from NM side.");
         }
 
+
         // 5. send received container memory usage from Node Manager to periodical scheduler
         List<ContainerSqueezeUnit> containerMemoryStatuses = remoteNodeStatus.getContainerMemoryStatuses();
 
@@ -445,6 +455,7 @@ public class ResourceTrackerService extends AbstractService implements
                 + available );
 
         // Heartbeat response
+        // TODO: need to add if stretch is Done
         NodeHeartbeatResponse nodeHeartBeatResponse = YarnServerBuilderUtils
                 .newNodeHeartbeatResponse(lastNodeHeartbeatResponse.
                                 getResponseId() + 1, NodeAction.NORMAL, null, null, null, null,
@@ -453,12 +464,19 @@ public class ResourceTrackerService extends AbstractService implements
         //rmNode is the specific node getting by the nodeId
         rmNode.updateNodeHeartbeatResponseForCleanup(nodeHeartBeatResponse);
 
+
+
         // x. check if this RMNode need to be squeezed
         // TODO: if this node need squeeze operation, fill heartbeat response
         if (rmNode.getIfSqueeze()) {
             rmNode.updateNodeHeartbeatResponseForSqueeze(nodeHeartBeatResponse);
             rmNode.setIfSqueeze(false);
             //rmNode.cleanContainersToBeSqueezed();
+        }
+
+        if (rmNode.getStretchState()){
+            rmNode.setResponseStretchState(nodeHeartBeatResponse);
+            rmNode.setStretchState(false);
         }
 
 
@@ -475,7 +493,7 @@ public class ResourceTrackerService extends AbstractService implements
                 new RMNodeStatusEvent(nodeId, remoteNodeStatus.getNodeHealthStatus(),
                         remoteNodeStatus.getContainersStatuses(),
                         remoteNodeStatus.getKeepAliveApplications(), nodeHeartBeatResponse,
-                        squeezedContainers));
+                        squeezedContainers, containersToStretch, stretchResourceSize));
 
 
         return nodeHeartBeatResponse;

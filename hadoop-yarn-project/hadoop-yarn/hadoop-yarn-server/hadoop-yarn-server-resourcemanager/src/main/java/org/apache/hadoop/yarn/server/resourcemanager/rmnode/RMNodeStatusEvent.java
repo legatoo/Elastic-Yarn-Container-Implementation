@@ -27,39 +27,55 @@ import org.apache.hadoop.yarn.server.api.records.NodeHealthStatus;
 
 public class RMNodeStatusEvent extends RMNodeEvent {
 
-  private final NodeHealthStatus nodeHealthStatus;
-  private final List<ContainerStatus> containersCollection;
-  private final NodeHeartbeatResponse latestResponse;
-  private final List<ApplicationId> keepAliveAppIds;
-  private final List<ContainerSqueezeUnit> squeezedContainers;
+    private final NodeHealthStatus nodeHealthStatus;
+    private final List<ContainerStatus> containersCollection;
+    private final NodeHeartbeatResponse latestResponse;
+    private final List<ApplicationId> keepAliveAppIds;
+    private final List<ContainerSqueezeUnit> squeezedContainers;
+    private final List<ContainerId> containersToStretch;
+    private final Resource stretchResourceSize;
 
-  public RMNodeStatusEvent(NodeId nodeId, NodeHealthStatus nodeHealthStatus,
-      List<ContainerStatus> collection, List<ApplicationId> keepAliveAppIds,
-      NodeHeartbeatResponse latestResponse,
-      List<ContainerSqueezeUnit> squeezedContainers) {
-    super(nodeId, RMNodeEventType.STATUS_UPDATE);
-    this.nodeHealthStatus = nodeHealthStatus;
-    this.containersCollection = collection;
-    this.keepAliveAppIds = keepAliveAppIds;
-    this.latestResponse = latestResponse;
-    this.squeezedContainers = squeezedContainers;
-  }
+    public RMNodeStatusEvent(NodeId nodeId, NodeHealthStatus nodeHealthStatus,
+                             List<ContainerStatus> collection, List<ApplicationId> keepAliveAppIds,
+                             NodeHeartbeatResponse latestResponse,
+                             List<ContainerSqueezeUnit> squeezedContainers,
+                             List<ContainerId> containersToStretch,
+                             Resource stretchResourceSize) {
+        super(nodeId, RMNodeEventType.STATUS_UPDATE);
+        this.nodeHealthStatus = nodeHealthStatus;
+        this.containersCollection = collection;
+        this.keepAliveAppIds = keepAliveAppIds;
+        this.latestResponse = latestResponse;
+        this.squeezedContainers = squeezedContainers;
+        this.stretchResourceSize = stretchResourceSize;
+        this.containersToStretch = containersToStretch;
+    }
 
-  public NodeHealthStatus getNodeHealthStatus() {
-    return this.nodeHealthStatus;
-  }
+    public NodeHealthStatus getNodeHealthStatus() {
+        return this.nodeHealthStatus;
+    }
 
-  public List<ContainerStatus> getContainers() {
-    return this.containersCollection;
-  }
+    public List<ContainerStatus> getContainers() {
+        return this.containersCollection;
+    }
 
-  public NodeHeartbeatResponse getLatestResponse() {
-    return this.latestResponse;
-  }
-  
-  public List<ApplicationId> getKeepAliveAppIds() {
-    return this.keepAliveAppIds;
-  }
+    public NodeHeartbeatResponse getLatestResponse() {
+        return this.latestResponse;
+    }
 
-  public List<ContainerSqueezeUnit> getSqueezedContainers() {return this.squeezedContainers;}
+    public List<ApplicationId> getKeepAliveAppIds() {
+        return this.keepAliveAppIds;
+    }
+
+    public List<ContainerSqueezeUnit> getSqueezedContainers() {
+        return this.squeezedContainers;
+    }
+
+    public Resource getStretchResourceSize() {
+        return stretchResourceSize;
+    }
+
+    public List<ContainerId> getContainersToStretch() {
+        return containersToStretch;
+    }
 }

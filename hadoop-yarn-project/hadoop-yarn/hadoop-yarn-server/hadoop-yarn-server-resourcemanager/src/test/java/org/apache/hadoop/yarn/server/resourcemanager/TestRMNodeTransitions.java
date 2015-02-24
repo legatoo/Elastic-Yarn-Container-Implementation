@@ -476,7 +476,7 @@ public class TestRMNodeTransitions {
     NodeHealthStatus status = NodeHealthStatus.newInstance(false, "sick",
         System.currentTimeMillis());
     node.handle(new RMNodeStatusEvent(node.getNodeID(), status,
-        new ArrayList<ContainerStatus>(), null, null, null));
+        new ArrayList<ContainerStatus>(), null, null, null, null, null));
     Assert.assertEquals(NodeState.UNHEALTHY, node.getState());
     return node;
   }

@@ -93,12 +93,16 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     private long lastHealthReportTime;
     private String nodeManagerVersion;
 
+    private AtomicBoolean stretchState = new AtomicBoolean(false);
+
     /* set of containers that have just launched */
     private final Set<ContainerId> launchedContainers =
             new HashSet<ContainerId>();
+    private final Set<ContainerId> launchedSpeculativeContainers =
+            new HashSet<ContainerId>();
     /* set of containers that have been squeezed */
-    private final Set<ContainerSqueezeUnit> squeezedContainers =
-            new HashSet<ContainerSqueezeUnit>();
+    private final Set<ContainerId> squeezedContainers =
+            new HashSet<ContainerId>();
 
     /* set of containers that need to be cleaned */
     private final Set<ContainerId> containersToClean = new TreeSet<ContainerId>(
@@ -120,8 +124,6 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
     /* the list of applications that have finished and need to be purged */
     private final List<ApplicationId> finishedApplications = new ArrayList<ApplicationId>();
 
-    /* the list of containers that have been squeezed and need to be processed*/
-    private final List<ContainerSqueezeUnit> squeezedContainersNeedToBeProcessd = new ArrayList<ContainerSqueezeUnit>();
 
     private NodeHeartbeatResponse latestNodeHeartBeatResponse = recordFactory
             .newRecordInstance(NodeHeartbeatResponse.class);
@@ -325,6 +327,15 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         ifSqueeze.set(flag);
     }
 
+    @Override
+    public synchronized boolean getStretchState() {
+        return stretchState.get();
+    }
+    @Override
+    public synchronized void setStretchState(boolean stretchState) {
+        this.stretchState.set(stretchState);
+    }
+
     public void setHealthReport(String healthReport) {
         this.writeLock.lock();
 
@@ -438,6 +449,25 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
         }
     }
 
+    @Override
+    public void setResponseStretchState(NodeHeartbeatResponse response) {
+        this.writeLock.lock();
+
+        try {
+            response.setStretchDone(true);
+
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    @Override
+    public synchronized void updateSqueezedContainers(List<ContainerId> containers) {
+        for(ContainerId containerId : containers){
+            if(squeezedContainers.contains(containerId))
+                squeezedContainers.remove(containerId);
+        }
+    }
 
     @Override
     public NodeHeartbeatResponse getLastNodeHeartBeatResponse() {
@@ -450,6 +480,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
             this.readLock.unlock();
         }
     }
+
 
     public static <T> T[] arrayBuilder(Class<T> ContainerSqueezeUnit, Collection c) {
         return (T[]) c.toArray((T[]) Array.newInstance(ContainerSqueezeUnit.class, 0));
@@ -812,6 +843,11 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
             List<ContainerSqueezeUnit> newlySqueezedContainers =
                     new ArrayList<ContainerSqueezeUnit>();
 
+            List<ContainerId> containersToStretch =
+                    new ArrayList<ContainerId>();
+
+            Resource stretchResourceSize = Resource.newInstance(0, 0);
+
             for (ContainerStatus remoteContainer : statusEvent.getContainers()) {
                 ContainerId containerId = remoteContainer.getContainerId();
 
@@ -837,6 +873,7 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
                         // Just launched container. RM knows about it the first time.
                         rmNode.launchedContainers.add(containerId);
                         newlyLaunchedContainers.add(remoteContainer);
+
                     }
                 } else {
                     // A finished container
@@ -853,25 +890,31 @@ public class RMNodeImpl implements RMNode, EventHandler<RMNodeEvent> {
 
                 // which means this container is RUNNING/SQUEEZE
                 if (rmNode.launchedContainers.contains(containerId)){
-                    if ( !rmNode.squeezedContainers.contains(container)){
-                        rmNode.squeezedContainers.add(container);
+                    if ( !rmNode.squeezedContainers.contains(container.getContainerId())){
+                        rmNode.squeezedContainers.add(container.getContainerId());
                         newlySqueezedContainers.add(container);
                     }
                 } else {
                     // which means the container is a finished container
-                    if (rmNode.squeezedContainers.contains(container))
-                        rmNode.squeezedContainers.remove(container);
+                    if (rmNode.squeezedContainers.contains(container.getContainerId()))
+                        rmNode.squeezedContainers.remove(container.getContainerId());
                 }
 
             }
 
+            containersToStretch.addAll(statusEvent.getContainersToStretch());
+
+            if (statusEvent.getStretchResourceSize().getMemory() != 0)
+                stretchResourceSize.setMemory(statusEvent.getStretchResourceSize().getMemory());
 
             // seems update queue metrics here
             if (newlyLaunchedContainers.size() != 0
                     || completedContainers.size() != 0
-                    || newlySqueezedContainers.size() != 0) {
+                    || newlySqueezedContainers.size() != 0
+                    || containersToStretch.size() != 0) {
                 rmNode.nodeUpdateQueue.add(new UpdatedContainerInfo
-                        (newlyLaunchedContainers, completedContainers, newlySqueezedContainers));
+                        (newlyLaunchedContainers, completedContainers, newlySqueezedContainers,
+                                containersToStretch, stretchResourceSize));
             }
             if (rmNode.nextHeartBeat) {
                 rmNode.nextHeartBeat = false;

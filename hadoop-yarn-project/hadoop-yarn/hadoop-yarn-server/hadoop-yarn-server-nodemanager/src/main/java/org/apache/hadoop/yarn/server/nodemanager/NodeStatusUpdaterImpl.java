@@ -65,6 +65,9 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.ContainerManag
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.application.ApplicationState;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Container;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.CompleteSqueezedContainerEvent;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerSqueezerEventType;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerStrecthDoneEvent;
 import org.apache.hadoop.yarn.server.nodemanager.metrics.NodeManagerMetrics;
 import org.apache.hadoop.yarn.server.utils.BuilderUtils;
 import org.apache.hadoop.yarn.util.YarnVersionInfo;
@@ -360,10 +363,29 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                     .getContainersSqueezer().getSqueezedContainersInThisRound());
         }
 
+        // TODO: if need to stretch
+        boolean ifStretch = ((ContainerManagerImpl) context.getContainerManager())
+                .getContainersSqueezer().getIfStretch();
+
+        Resource stretchResourceSize = Resource.newInstance(0, 0);
+        List<ContainerId> containersToStretch = new ArrayList<ContainerId>();
+        if(ifStretch) {
+            stretchResourceSize.setMemory(
+                    ((ContainerManagerImpl) context.getContainerManager())
+                            .getContainersSqueezer().getStrecthResourceSize().getMemory()
+            );
+
+            containersToStretch.addAll(
+                    ((ContainerManagerImpl) context.getContainerManager())
+                            .getContainersSqueezer().getContainersToStretch()
+            );
+        }
+
         NodeStatus nodeStatus =
                 NodeStatus.newInstance(nodeId, responseId, containersStatuses,
                         createKeepAliveApplicationList(), nodeHealthStatus,
-                        containerMemoryStatuses, squeezedContainers);
+                        containerMemoryStatuses, squeezedContainers,
+                        containersToStretch, stretchResourceSize);
 
         return nodeStatus;
     }
@@ -623,6 +645,13 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
 
                         updateMasterKeys(response);
 
+                        if (response.getStretchDone()){
+                            // notify squeezer to set stretch back to false
+                            dispatcher.getEventHandler().handle(
+                                    new CMgrStretchStateEvent(true, CMgrStretchStateEvent.Reason.FROM_RM)
+                            );
+                        }
+
 
                         if (response.getNodeAction() == NodeAction.SHUTDOWN) {
                             LOG
@@ -672,6 +701,7 @@ public class NodeStatusUpdaterImpl extends AbstractService implements
                             dispatcher.getEventHandler().handle(
                                     new CMgrCompletedAppsEvent(appsToCleanup,
                                             CMgrCompletedAppsEvent.Reason.BY_RESOURCEMANAGER));
+
                         }
 
                         // TODO: check containers to be squeeze from RM response,

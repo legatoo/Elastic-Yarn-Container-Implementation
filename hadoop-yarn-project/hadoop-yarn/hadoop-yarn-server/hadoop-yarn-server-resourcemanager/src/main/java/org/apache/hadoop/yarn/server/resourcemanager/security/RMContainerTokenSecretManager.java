@@ -197,6 +197,7 @@ public class RMContainerTokenSecretManager extends
   public Token createContainerToken(ContainerId containerId, NodeId nodeId,
       String appSubmitter, Resource capability, Priority priority,
       long createTime, LogAggregationContext logAggregationContext) {
+
     byte[] password;
     ContainerTokenIdentifier tokenIdentifier;
     long expiryTimeStamp =

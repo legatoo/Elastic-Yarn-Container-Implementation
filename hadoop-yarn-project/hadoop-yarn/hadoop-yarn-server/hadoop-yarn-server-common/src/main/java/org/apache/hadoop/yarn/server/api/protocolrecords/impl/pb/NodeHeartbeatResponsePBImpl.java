@@ -138,15 +138,15 @@ public class NodeHeartbeatResponsePBImpl extends
   }
 
   @Override
-  public boolean getFlag(){
+  public boolean getStretchDone(){
     NodeHeartbeatResponseProtoOrBuilder p = viaProto ? proto : builder;
-    return (p.getFlag());
+    return (p.getStretchDone());
   }
 
   @Override
-  public void setFlag(boolean flag){
+  public void setStretchDone(boolean stretchDone){
     maybeInitBuilder();
-    builder.setFlag((flag));
+    builder.setStretchDone((stretchDone));
   }
 
   @Override

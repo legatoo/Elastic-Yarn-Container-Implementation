@@ -8,5 +8,7 @@ public enum PeriodicSchedulerEventType {
 
     OPERATE_PERIODIC_SCHEDULE,
 
-    SQUEEZE_DONE
+    SQUEEZE_DONE,
+
+    STRETCH_DONE
 }

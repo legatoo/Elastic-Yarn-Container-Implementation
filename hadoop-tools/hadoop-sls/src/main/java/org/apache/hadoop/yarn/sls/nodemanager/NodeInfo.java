@@ -185,6 +185,26 @@ public class NodeInfo {
         public void cleanContainersToBeSqueezed() {
 
         }
+
+        @Override
+        public void setResponseStretchState(NodeHeartbeatResponse response) {
+
+        }
+
+        @Override
+        public boolean getStretchState() {
+            return false;
+        }
+
+        @Override
+        public void setStretchState(boolean flag) {
+
+        }
+
+        @Override
+        public void updateSqueezedContainers(List<ContainerId> containers) {
+
+        }
     }
 
     public static RMNode newNodeInfo(String rackName, String hostName,

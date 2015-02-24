@@ -248,6 +248,9 @@ public interface CSQueue
                                     FiCaSchedulerNode node, FiCaSchedulerApp application,
                                    RMContainer container, Resource squeezed);
 
+    public void stretchThisQueue(Resource clusterResource, FiCaSchedulerNode node,
+                             FiCaSchedulerApp application, Resource stretch) ;
+
     /**
      * A container assigned to the queue has been squeezed
      *

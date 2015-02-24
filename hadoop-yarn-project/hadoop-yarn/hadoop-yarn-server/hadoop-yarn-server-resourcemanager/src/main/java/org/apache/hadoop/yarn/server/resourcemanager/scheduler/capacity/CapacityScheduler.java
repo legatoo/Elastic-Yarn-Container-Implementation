@@ -52,6 +52,7 @@ import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hadoop.yarn.proto.YarnServiceProtos.SchedulerResourceTypes;
 import org.apache.hadoop.yarn.server.resourcemanager.RMContext;
 import org.apache.hadoop.yarn.server.resourcemanager.nodelabels.RMNodeLabelsManager;
+import org.apache.hadoop.yarn.server.resourcemanager.periodicservice.PeriodicSchedulerStretchDoneEvent;
 import org.apache.hadoop.yarn.server.resourcemanager.recovery.RMStateStore.RMState;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMApp;
 import org.apache.hadoop.yarn.server.resourcemanager.rmapp.RMAppEvent;
@@ -907,7 +908,7 @@ public class CapacityScheduler extends
     // when RMNode received NODE_UPDATE event
     private synchronized void nodeUpdate(RMNode nm) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("nodeUpdate: " + nm + " clusterResources: " + clusterResource);
+            LOG.debug("nodeUpdate: " + nm + " cluster resource: " + clusterResource);
         }
 
         FiCaSchedulerNode node = getNode(nm.getNodeID());
@@ -921,12 +922,21 @@ public class CapacityScheduler extends
         List<ContainerSqueezeUnit> newlySqueezedContainers =
                 new ArrayList<ContainerSqueezeUnit>();
 
+        List<ContainerId> containersToStretch = new ArrayList<ContainerId>();
+
+        Resource stretchResoureSize = null;
+
         for (UpdatedContainerInfo containerInfo : containerInfoList) {
             newlyLaunchedContainers.addAll(containerInfo.getNewlyLaunchedContainers());
             completedContainers.addAll(containerInfo.getCompletedContainers());
 
             newlySqueezedContainers.addAll(containerInfo.getNewlySqueezedContainers());
+            containersToStretch.addAll(containerInfo.getContainersToStretch());
+            stretchResoureSize = containerInfo.getStretchResourceSize();
         }
+
+        if (stretchResoureSize == null)
+            stretchResoureSize = Resource.newInstance(0, 0);
 
         // Processing the newly launched containers
         for (ContainerStatus launchedContainer : newlyLaunchedContainers) {
@@ -948,6 +958,27 @@ public class CapacityScheduler extends
             LOG.debug("Container SQUEEZED: " + containerId);
             squeezedContainer(squeezedContainer, RMContainerEventType.SQUEEZE);
         }
+
+        // Process stretch request
+        if (stretchResoureSize.getMemory() != 0){
+            LOG.debug("Well Done. We are going to stretch node: " + node.getNodeID());
+            boolean state = false;
+            state = stretchNode(node, stretchResoureSize, containersToStretch);
+
+            if (state){
+                node.updateSqueezedContainers(containersToStretch);
+                node.getRMNode().updateSqueezedContainers(containersToStretch);
+
+                // send event to periodical scheduler
+
+                this.rmContext.getDispatcher().getEventHandler().handle(
+                    new PeriodicSchedulerStretchDoneEvent(node.getNodeID(), containersToStretch)
+                );
+            }
+
+            node.getRMNode().setStretchState(state);
+        }
+
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("HAKUNAMI-->Node being looked for scheduling " + node.getNodeName()
@@ -1251,6 +1282,88 @@ public class CapacityScheduler extends
 
     }
 
+    @Lock(CapacityScheduler.class)
+    protected synchronized boolean stretchNode(FiCaSchedulerNode node, Resource resource,
+                List<ContainerId> containersToStretch){
+        int stretchMemSize = resource.getMemory();
+        if (stretchMemSize == 0){
+            LOG.info("Stretch size is 0, return.");
+            return true;
+        }
+
+        Resource availableSqueezed = node.getAvailableSqueezedResource();
+
+        if (availableSqueezed.getMemory() >= resource.getMemory()){
+            // this is perfect, no need to kill any container
+            // just update metrics
+
+            node.stretch(resource);
+            List<AbstractCSQueue> stretchedQueue = new ArrayList<AbstractCSQueue>();
+
+            for (RMContainer rmContainer: node.getRunningContainers()){
+                if(rmContainer == null){
+                    continue;
+                }
+
+                Container container = rmContainer.getContainer();
+                ContainerId containerId = container.getId();
+
+                // Get the application for the finished container
+                FiCaSchedulerApp application =
+                        getCurrentAttemptForContainer(container.getId());
+                ApplicationId appId =
+                        container.getId().getApplicationAttemptId().getApplicationId();
+                if (application == null) {
+                    LOG.info("Container " + container + " of" + " unknown application "
+                            + appId );
+                    continue;
+                }
+
+
+                LeafQueue queue = (LeafQueue) application.getQueue();
+                if (!stretchedQueue.contains(queue))
+                    stretchedQueue.add(queue);
+                else
+                    continue;
+
+                queue.stretchThisQueue(clusterResource, node, application, resource);
+
+                LOG.info("Queue " + queue.getQueueName()+ " has been stretched, " +
+                        "capacity factor is " + queue.getCapacity());
+                LOG.debug("Available squeezed resource in queue is " + queue.getAvailableSqueezedResource());
+                LOG.debug("Consumed squeezed resource in queue is " + queue.getUsedSqueezedResources());
+
+
+            }
+
+            return true;
+
+        } else {
+            // This part is not easy
+            // have to kill some speculative containers
+            int stretchMemCount = 0;
+            for (RMContainer rmContainer: node.getRunningContainers()){
+                Container container = rmContainer.getContainer();
+                // must have speculative containers
+                if (container.getIfSpeculative()){
+                    // account how many
+                    stretchMemCount += container.getResource().getMemory();
+                    completedContainer(rmContainer,
+                            SchedulerUtils.createAbnormalContainerStatus(
+                                    rmContainer.getContainerId(), SchedulerUtils.RELEASED_CONTAINER),
+                            RMContainerEventType.KILL);
+
+                    if (stretchMemCount >= stretchMemSize)
+                        return true;
+
+                }
+            }
+
+            return false;
+
+        }
+
+    }
 
     @Lock(CapacityScheduler.class)
     @Override
@@ -1282,14 +1395,15 @@ public class CapacityScheduler extends
         LeafQueue queue = (LeafQueue) application.getQueue();
 
         // TODO: when this container is currently squeezed??
-        Resource padding = node.ifSqueezedContainer(containerId);
+        Resource squzzedSize = node.ifSqueezedContainer(containerId);
 
         // need to decrease available squeezed resource
-        if(padding.getMemory() > 0){
-            LOG.debug("Squeezed container is finishing. update available squeezed resource.");
+        if(squzzedSize.getMemory() > 0){
+            LOG.debug("squeezed container is finishing. update available squeezed resource.");
             // this ccompleted container is squeezed, remember to deduct squeezed resource
+
             queue.completedSqueezedContainer(clusterResource, node,application,
-                    rmContainer, padding);
+                    rmContainer, squzzedSize);
         }
 
         queue.completedContainer(clusterResource, application, node,
