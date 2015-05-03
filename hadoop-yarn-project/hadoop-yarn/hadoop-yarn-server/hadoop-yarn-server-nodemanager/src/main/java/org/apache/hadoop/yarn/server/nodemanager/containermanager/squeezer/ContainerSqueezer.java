@@ -9,6 +9,7 @@ import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerSqueezeUnit;
 import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.event.AsyncDispatcher;
 import org.apache.hadoop.yarn.event.Dispatcher;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
@@ -18,6 +19,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.Cont
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerImpl;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.container.ContainerSqueezeEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.launcher.ContainersLauncherEvent;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitorUpdateAsStretchDone;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,7 +48,7 @@ public class ContainerSqueezer extends AbstractService
             new ArrayList<ContainerSqueezeUnit>();
 
 
-    public ContainerSqueezer(Context context, Dispatcher dispatcher,
+    public ContainerSqueezer(Context context, AsyncDispatcher dispatcher,
                               ContainerExecutor exec, ContainerManagerImpl containerManager) {
         super("containers-squeezer");
         this.exec = exec;
@@ -89,17 +91,15 @@ public class ContainerSqueezer extends AbstractService
                                 + containerSqueezeUnit.getDiff() );
                         //Container container = context.getContainers().get(containerId);
 
-                        // 1. update node metrics information
-                        // done in ContainerImpl
 
-                        // 2. keep record in ContainerSqueezer for query
+                        // keep record in ContainerSqueezer for query
                         currentSqueezedContainers.put(containerId, containerSqueezeUnit);
                         squeezedContainersInThisRound.add(containerSqueezeUnit);
 
-                        // 3. inform Container Monitor
+                        // inform Container Monitor
                         // done in ContainerImpl
 
-                        // 4. update heart beat about successfully squeezed containers
+                        // update heart beat about successfully squeezed containers
                         // only if on need to stretch. if stretch is needed. no sense to
                         // squeeze
                         if (!getIfStretch())
@@ -141,8 +141,21 @@ public class ContainerSqueezer extends AbstractService
                 LOG.debug("hakunami------>hakunami");
                 ContainerStrecthDoneEvent containerStrecthDoneEvent =
                         (ContainerStrecthDoneEvent)event;
-                if (containerStrecthDoneEvent.getIfDone())
+
+
+                if (containerStrecthDoneEvent.getIfDone()) {
                     setIfStretch(false);
+
+                    // remove stretched containers from squeezing containers in monitor
+                    for (ContainerId id : this.containersToStretch){
+                        dispatcher.getEventHandler().handle(
+                                new ContainersMonitorUpdateAsStretchDone(id)
+                        );
+                    }
+                }
+                break;
+
+            default:
                 break;
 
         }

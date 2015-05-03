@@ -94,7 +94,7 @@ public class PeriodicResourceSchedulerImpl extends AbstractService implements Pe
 
             // simply return all non-master containers for testing
             // TODO: proper algorithm to pick containers to be squeezed [simple priority queue for now]
-            int size = (int)(runningContainerMemoryStatus.size());
+            int size = (int)(runningContainerMemoryStatus.size()/2);
             int count = 0;
 
             while (!runningContainerMemoryStatus.isEmpty()) {

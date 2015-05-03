@@ -106,6 +106,7 @@ public class AMRMClientImpl<T extends ContainerRequest> extends AMRMClient<T> {
         Resource capability, boolean relaxLocality) {
       remoteRequest = ResourceRequest.newInstance(priority, resourceName,
           capability, 0);
+
       remoteRequest.setRelaxLocality(relaxLocality);
       containerRequests = new LinkedHashSet<T>();
     }
@@ -248,6 +249,8 @@ public class AMRMClientImpl<T extends ContainerRequest> extends AMRMClient<T> {
         for(ResourceRequest r : ask) {
           // create a copy of ResourceRequest as we might change it while the 
           // RPC layer is using it to send info across
+
+            LOG.debug(" in AMRMClient, resource request is: " + r);
           askList.add(ResourceRequest.newInstance(r.getPriority(),
               r.getResourceName(), r.getCapability(), r.getNumContainers(),
               r.getRelaxLocality(), r.getNodeLabelExpression()));
@@ -608,6 +611,7 @@ public class AMRMClientImpl<T extends ContainerRequest> extends AMRMClient<T> {
       addResourceRequest(Priority priority, String resourceName,
           Resource capability, T req, boolean relaxLocality,
           String labelExpression) {
+      LOG.debug(" FUCK OK, enter an interesting place.");
     Map<String, TreeMap<Resource, ResourceRequestInfo>> remoteRequests =
       this.remoteRequestsTable.get(priority);
     if (remoteRequests == null) {
@@ -636,6 +640,7 @@ public class AMRMClientImpl<T extends ContainerRequest> extends AMRMClient<T> {
     
     resourceRequestInfo.remoteRequest.setNumContainers(
          resourceRequestInfo.remoteRequest.getNumContainers() + 1);
+      LOG.debug("FUCK add resource request's container num: " + resourceRequestInfo.remoteRequest.getNumContainers());
 
     if (relaxLocality) {
       resourceRequestInfo.containerRequests.add(req);

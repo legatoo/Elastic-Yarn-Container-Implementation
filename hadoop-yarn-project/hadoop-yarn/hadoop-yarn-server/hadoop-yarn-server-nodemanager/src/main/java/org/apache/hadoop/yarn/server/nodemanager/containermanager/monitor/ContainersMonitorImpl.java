@@ -511,8 +511,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                                         .ContainerState.RUNNING)) {
 
                                     // since the script I am using is very slow, Here '*100' is for displying purpose
-                                    double vMemUsageRatio = ((double) (curMemUsageOfAgedProcesses)) / vmemLimit;
-                                    double pMemUsageRatio = ((double) (curRssMemUsageOfAgedProcesses)) / pmemLimit;
+                                    double vMemUsageRatio = (double) curMemUsageOfAgedProcesses / vmemLimit;
+                                    double pMemUsageRatio = (double) curRssMemUsageOfAgedProcesses / pmemLimit;
 
                                     //set memory usage precision
                                     DecimalFormat vMemUsage = new DecimalFormat("#.#####");
@@ -522,7 +522,7 @@ public class ContainersMonitorImpl extends AbstractService implements
                                     pMemUsageRatio = Double.valueOf(pMemUsage.format(pMemUsageRatio));
 
                                     LOG.debug(containerId +
-                                            "vMemUsageRatio: " + vMemUsageRatio +
+                                            " vMemUsageRatio: " + vMemUsageRatio +
                                             ", pMemUsageRatio: " + pMemUsageRatio);
 
                                     //TODO: add monitor method for squeezed container
@@ -561,8 +561,6 @@ public class ContainersMonitorImpl extends AbstractService implements
                                         LOG.debug("Container State: " + context.getContainers().get(containerId).getContainerState());
                                         LOG.debug("Adding to container to be squeezed list.");
 
-
-
                                         // only squeeze the containers whoes usage is under warning threshold
                                         if (vMemUsageRatio < threshold && pMemUsageRatio < threshold){
                                             Resource origin = context.getContainers().get(containerId).getResource();
@@ -573,7 +571,8 @@ public class ContainersMonitorImpl extends AbstractService implements
                                             // the priority here is:
                                             // how safe to squeeze this container, measured as:
                                             // amount of memory in MB to the threshold + how much memory can be squeezed from this container
-                                            int priority = (int)((double)vMemLimitInMB * (threshold - vMemUsageRatio + squeezeThreshold));
+                                            //int priority = (int)((double)vMemLimitInMB * (threshold - vMemUsageRatio + squeezeThreshold));
+                                            int priority = diff.getMemory() + (int)(vMemLimitInMB*(threshold-vMemUsageRatio));
                                             ContainerSqueezeUnit containerSqueezeUnit =
                                                     BuilderUtils.newContainerSqueezeUnit(containerId, diff, priority);
                                             if (trackingContainersForSqueeze.containsKey(containerId)){
@@ -721,6 +720,17 @@ public class ContainersMonitorImpl extends AbstractService implements
                     }
                 }
                 break;
+
+            case STOP_MONITOR_STRETCHED_CONTAINER:
+                ContainersMonitorUpdateAsStretchDone event =
+                        (ContainersMonitorUpdateAsStretchDone) monitoringEvent;
+                ContainerId stretched_containerId = event.getContainerId();
+
+                synchronized (this.containersAreSqueezing){
+                    if (this.containersAreSqueezing.containsKey(stretched_containerId)){
+                        this.containersAreSqueezing.remove(stretched_containerId);
+                    }
+                }
             default:
                 // TODO: Wrong event.
         }

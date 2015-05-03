@@ -103,10 +103,7 @@ import org.apache.hadoop.yarn.server.nodemanager.containermanager.logaggregation
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.LogHandler;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.NonAggregatingLogHandler;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.loghandler.event.LogHandlerEventType;
-import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainerMonitorUpdateEvent;
-import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitor;
-import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitorEventType;
-import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.ContainersMonitorImpl;
+import org.apache.hadoop.yarn.server.nodemanager.containermanager.monitor.*;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.CompleteSqueezedContainerEvent;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerSqueezer;
 import org.apache.hadoop.yarn.server.nodemanager.containermanager.squeezer.ContainerSqueezerEventType;

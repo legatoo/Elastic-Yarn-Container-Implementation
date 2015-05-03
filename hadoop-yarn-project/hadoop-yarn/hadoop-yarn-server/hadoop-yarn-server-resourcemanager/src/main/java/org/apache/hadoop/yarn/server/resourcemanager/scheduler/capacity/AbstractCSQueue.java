@@ -349,7 +349,8 @@ public abstract class AbstractCSQueue implements CSQueue {
         CSQueueUtils.checkAbsoluteCapacitiesByLabel(getQueueName(),
                 absoluteCapacityByNodeLabels, absoluteCapacityByNodeLabels);
 
-        this.reservationsContinueLooking = reservationContinueLooking;
+        // disable reservation
+        this.reservationsContinueLooking = false;
     }
 
     @Private

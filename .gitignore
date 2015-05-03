@@ -28,10 +28,3 @@ conf/
 *.md
 *.vm
 *.png
-hadoop-common-project/hadoop-kms/downloads/
-hadoop-hdfs-project/hadoop-hdfs/downloads
-hadoop-hdfs-project/hadoop-hdfs-httpfs/downloads
-hadoop-hdfs-project/
-hadoop-mapreduce-project/
-hadoop-maven-plugins/
-dev-support/

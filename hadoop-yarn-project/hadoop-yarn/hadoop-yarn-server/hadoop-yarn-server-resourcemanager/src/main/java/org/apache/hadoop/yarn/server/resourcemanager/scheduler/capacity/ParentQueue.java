@@ -415,6 +415,7 @@ public class ParentQueue extends AbstractCSQueue {
         CSAssignment assignment =
                 new CSAssignment(Resources.createResource(0, 0), NodeType.NODE_LOCAL);
 
+
         // if our queue cannot access this node, just return
         if (!SchedulerUtils.checkQueueAccessToNode(accessibleLabels,
                 labelManager.getLabelsOnNode(node.getNodeID()))) {
@@ -469,11 +470,14 @@ public class ParentQueue extends AbstractCSQueue {
             }
 
             if (LOG.isDebugEnabled()) {
+                LOG.debug("--------Current Parent Queue Status After Allocation--------");
                 LOG.debug("ParentQ=" + getQueueName()
                         + " assignedSoFarInThisIteration=" + assignment.getResource()
                         + " usedCapacity=" + getUsedCapacity()
                         + " absoluteUsedCapacity=" + getAbsoluteUsedCapacity());
             }
+
+            //TODO: What's the meaning of this part???????
 
             // Do not assign more than one container if this isn't the root queue
             // or if we've already assigned an off-switch container
@@ -502,6 +506,8 @@ public class ParentQueue extends AbstractCSQueue {
             labelCanAccess.add(RMNodeLabelsManager.NO_LABEL);
         }
 
+        LOG.debug(this.getQueueName() + " has avaibale squeeze resource: " + getAvailableSqueezedResource());
+
         boolean canAssign = true;
         for (String label : labelCanAccess) {
             if (!usedResourcesByNodeLabels.containsKey(label)) {
@@ -514,14 +520,30 @@ public class ParentQueue extends AbstractCSQueue {
             // if any of the label doesn't beyond limit, we can allocate on this node
             if (currentAbsoluteLabelUsedCapacity >=
                     getAbsoluteMaximumCapacityByNodeLabel(label)) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(getQueueName() + " used=" + usedResources
-                            + " current-capacity (" + usedResourcesByNodeLabels.get(label) + ") "
-                            + " >= max-capacity ("
-                            + labelManager.getResourceByLabel(label, clusterResource) + ")");
+                Resource squeezeSupport = Resources.add(
+                        labelManager.getResourceByLabel(label, clusterResource),
+                        getAvailableSqueezedResource());
+
+                float currentLabelUsedCapacityWithSqueeze =
+                        Resources.divide(resourceCalculator, clusterResource,
+                                usedResourcesByNodeLabels.get(label),
+                                squeezeSupport);
+                LOG.debug(" new capacity with squeeze support is " + currentLabelUsedCapacityWithSqueeze);
+
+                if (currentLabelUsedCapacityWithSqueeze >=
+                        getAbsoluteMaximumCapacityByNodeLabel(label)) {
+
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(getQueueName() + " used=" + usedResources
+                                + " current-capacity (" + usedResourcesByNodeLabels.get(label) + ") "
+                                + " >= max-capacity ("
+                                + labelManager.getResourceByLabel(label, clusterResource) + ")");
+                    }
+
+                    canAssign = false;
+                    break;
                 }
-                canAssign = false;
-                break;
+
             }
         }
 
@@ -588,8 +610,9 @@ public class ParentQueue extends AbstractCSQueue {
             Resource assigned = assignment.getResource();
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Assigned to queue: " + childQueue.getQueuePath() +
-                        " stats: " + childQueue + " --> " +
+                LOG.debug("--------Current Leaf Queue Status After Allocation--------");
+                LOG.debug("Assigned to queue: " + childQueue.getQueuePath());
+                LOG.debug(" stats: " + childQueue + " --> " +
                         assignment.getResource() + ", " + assignment.getType());
             }
 
@@ -607,6 +630,9 @@ public class ParentQueue extends AbstractCSQueue {
                 if (LOG.isDebugEnabled()) {
                     printChildQueues();
                 }
+
+                // here means if one of the child queues assigned
+                // return
                 break;
             }
 

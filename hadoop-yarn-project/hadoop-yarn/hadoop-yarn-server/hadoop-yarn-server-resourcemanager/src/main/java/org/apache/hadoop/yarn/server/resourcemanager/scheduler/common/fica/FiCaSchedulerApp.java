@@ -135,6 +135,8 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
                 .getApplicationAttemptId(), node.getNodeID(),
                 appSchedulingInfo.getUser(), this.rmContext);
 
+        LOG.debug("OIOI container allocate in ScheduleApp: " + rmContainer.getContainer().getId());
+
         // Add it to allContainers list.
         // from the application's view, no need to know if container
         // is speculative or normal. They are all newlyAllocatedContainers
@@ -257,11 +259,14 @@ public class FiCaSchedulerApp extends SchedulerApplicationAttempt {
         }
         int numCont = (int) Math.ceil(
                 Resources.divide(rc, clusterResource, tot, minimumAllocation));
-        LOG.debug("In getAllocation, number of containers: " + numCont);
+
 
         ResourceRequest rr = ResourceRequest.newInstance(
                 Priority.UNDEFINED, ResourceRequest.ANY,
                 minimumAllocation, numCont);
+
+        LOG.debug("In getAllocation, number of containers: " + numCont +
+                " resource request in getAllocation is " + rr);
 
         ContainersAndNMTokensAllocation allocation =
                 pullNewlyAllocatedContainersAndNMTokens();

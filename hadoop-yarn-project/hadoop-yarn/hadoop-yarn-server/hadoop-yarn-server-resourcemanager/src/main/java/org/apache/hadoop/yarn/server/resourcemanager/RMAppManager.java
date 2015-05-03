@@ -289,6 +289,7 @@ public class RMAppManager implements EventHandler<RMAppManagerEvent>,
         this.rmContext.getDispatcher().getEventHandler()
           .handle(new RMAppRejectedEvent(applicationId, e.getMessage()));
         throw RPCUtil.getRemoteException(e);
+
       }
     } else {
       // Dispatcher is not yet started at this time, so these START events

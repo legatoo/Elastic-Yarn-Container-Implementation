@@ -741,6 +741,7 @@ public class RMAppImpl implements RMApp, Recoverable {
   }
 
   private void createNewAttempt() {
+
     ApplicationAttemptId appAttemptId =
         ApplicationAttemptId.newInstance(applicationId, attempts.size() + 1);
     RMAppAttempt attempt =
@@ -753,6 +754,9 @@ public class RMAppImpl implements RMApp, Recoverable {
           maxAppAttempts == (getNumFailedAppAttempts() + 1), amReq);
     attempts.put(appAttemptId, attempt);
     currentAttempt = attempt;
+
+      LOG.debug("FUCK create new attempt. AM request in submission context: "
+              + attempt.getSubmissionContext().getAMContainerResourceRequest());
   }
   
   private void

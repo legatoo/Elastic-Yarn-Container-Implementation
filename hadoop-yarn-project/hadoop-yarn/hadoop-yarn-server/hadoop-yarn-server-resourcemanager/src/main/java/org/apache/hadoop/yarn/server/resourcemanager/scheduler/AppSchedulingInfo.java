@@ -119,6 +119,10 @@ public class AppSchedulingInfo {
         return this.containerIdCounter.incrementAndGet();
     }
 
+    public void decreaseContainerId() {
+        this.containerIdCounter.decrementAndGet();
+    }
+
     /**
      * The ApplicationMaster is updating resource requirements for the
      * application, by asking for more resources and releasing resources acquired
@@ -140,7 +144,7 @@ public class AppSchedulingInfo {
 
             if (resourceName.equals(ResourceRequest.ANY)) {
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("update:" + " application=" + applicationId + " request="
+                    LOG.debug("update: application=" + applicationId + " request="
                             + request + "Request name: " + request.getResourceName());
                 }
                 updatePendingResources = true;
@@ -173,6 +177,7 @@ public class AppSchedulingInfo {
 
             asks.put(resourceName, request);
             if (updatePendingResources) {
+                LOG.debug("update pending resource.");
 
                 // Similarly, deactivate application?
                 if (request.getNumContainers() <= 0) {

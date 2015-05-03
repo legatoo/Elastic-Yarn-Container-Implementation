@@ -193,6 +193,10 @@ public class SchedulerApplicationAttempt {
         return appSchedulingInfo.getNewContainerId();
     }
 
+    public void decreaseContainerIdIfAssignFail() {
+        appSchedulingInfo.decreaseContainerId();
+    }
+
     public Collection<Priority> getPriorities() {
         return appSchedulingInfo.getPriorities();
     }

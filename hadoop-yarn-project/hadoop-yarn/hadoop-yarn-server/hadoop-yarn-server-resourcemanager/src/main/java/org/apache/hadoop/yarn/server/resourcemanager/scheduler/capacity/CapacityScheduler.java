@@ -621,7 +621,7 @@ public class CapacityScheduler extends
     }
 
     private synchronized void addApplication(ApplicationId applicationId,
-                                             String queueName, String user, boolean isAppRecovering) {
+              String queueName, String user, boolean isAppRecovering) {
 
         if (mappings != null && mappings.size() > 0) {
             try {
@@ -854,6 +854,7 @@ public class CapacityScheduler extends
                 application.showRequests();
 
                 // Update application requests
+                // ask is sent from AMService
                 application.updateResourceRequests(ask);
 
                 LOG.debug("allocate: post-update");
@@ -1052,7 +1053,6 @@ public class CapacityScheduler extends
                 // assign containers here
                 root.assignContainers(clusterResource, node, false);
             } else {
-                // TODO: take squeezed resource into consideration here
                 LOG.debug(" available/squeezed resource is not enough. " );
             }
         } else {

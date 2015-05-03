@@ -915,10 +915,13 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
 
                 // SchedulerUtils.validateResourceRequests is not necessary because
                 // AM resource has been checked when submission
+
                 Allocation amContainerAllocation =
                         appAttempt.scheduler.allocate(appAttempt.applicationAttemptId,
                                 Collections.singletonList(appAttempt.amReq),
                                 EMPTY_CONTAINER_RELEASE_LIST, null, null);
+
+                LOG.debug("FUCKK the appAttempt's request: " + appAttempt.amReq);
                 if (amContainerAllocation != null
                         && amContainerAllocation.getContainers() != null) {
                     assert (amContainerAllocation.getContainers().size() == 0);
@@ -961,6 +964,9 @@ public class RMAppAttemptImpl implements RMAppAttempt, Recoverable {
             // Set the masterContainer
             appAttempt.setMasterContainer(amContainerAllocation.getContainers()
                     .get(0));
+
+            LOG.debug(" AM container is set as: " + appAttempt.getMasterContainer());
+
             RMContainerImpl rmMasterContainer = (RMContainerImpl) appAttempt.scheduler
                     .getRMContainer(appAttempt.getMasterContainer().getId());
             rmMasterContainer.setAMContainer(true);
